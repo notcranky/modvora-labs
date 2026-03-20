@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --yes)",
+      "Bash(npx create-next-app@latest modvora --typescript --tailwind --eslint --app --yes)",
+      "Bash(mv modvora/* .)",
+      "Bash(mv modvora/.* .)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(yarn --version)",
+      "Bash(pnpm --version)",
+      "Read(//c/Users/actio/AppData/Roaming/npm/**)",
+      "Bash(C:/Users/actio/AppData/Roaming/npm/pnpm.cmd --version)",
+      "Bash(node \"C:/Users/actio/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.cjs\" --version)",
+      "Bash(git -C /c/Users/actio/mod status)",
+      "Bash(git config:*)",
+      "Bash(git -C /c add Users/actio/mod/)",
+      "Bash(git -C /c reset Users/actio/mod/.claude/)",
+      "Bash(git -C /c status --short)",
+      "Bash(git -C /c diff --staged --name-only)",
+      "Bash(git -C /c remote -v)",
+      "Bash(gh --version)",
+      "Bash(gh auth:*)",
+      "Bash(git -C:*)"
+    ]
+  }
+}
