@@ -1,24 +1,31 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useState } from "react";
+import Link from 'next/link'
+import { useState } from 'react'
+import { useAuth, signOut } from '@/hooks/useAuth'
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
-  { href: "/how-it-works", label: "How It Works" },
-  { href: "/about", label: "About" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/contact", label: "Contact" },
-];
+  { href: '/', label: 'Home' },
+  { href: '/services', label: 'Services' },
+  { href: '/how-it-works', label: 'How It Works' },
+  { href: '/about', label: 'About' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/contact', label: 'Contact' },
+]
 
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const { user, loading } = useAuth()
+
+  const isOwner = user?.role === 'owner'
+  const isAdmin = user?.role === 'admin'
+  const isStaff = isOwner || isAdmin
+  const isCustomer = user?.role === 'customer'
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0b]/90 backdrop-blur-md border-b border-[#2a2a30]">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-7 h-7 rounded bg-purple-600 flex items-center justify-center">
             <span className="text-white font-bold text-sm">M</span>
@@ -28,7 +35,6 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-7">
           {navLinks.map((link) => (
             <Link
@@ -39,37 +45,114 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {isStaff && (
+            <Link
+              href="/admin"
+              className="text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
+            >
+              {isOwner ? 'Owner ⚡' : 'Admin ⚡'}
+            </Link>
+          )}
+          {(isStaff || isCustomer) && (
+            <Link
+              href="/dashboard"
+              className="text-sm text-zinc-400 hover:text-white transition-colors duration-150"
+            >
+              My Build
+            </Link>
+          )}
         </div>
 
-        {/* CTA */}
-        <div className="hidden md:flex">
-          <Link
-            href="/intake"
-            className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-all duration-150 purple-glow-sm"
-          >
-            Get Started
-          </Link>
+        <div className="hidden md:flex items-center gap-3">
+          {loading ? (
+            <div className="w-8 h-8 rounded-full bg-[#2a2a30] animate-pulse" />
+          ) : user ? (
+            <div className="relative">
+              <button
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="flex items-center gap-2 bg-[#16161a] hover:bg-[#1e1e24] border border-[#2a2a30] hover:border-purple-500/30 rounded-xl px-3 py-2 transition-all"
+              >
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isStaff ? 'bg-purple-600 text-white' : 'bg-zinc-700 text-zinc-200'}`}>
+                  {user.email.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-white text-sm font-medium">
+                  {isOwner ? 'Owner' : isAdmin ? 'Admin' : 'My Account'}
+                </span>
+                {isOwner && <span className="text-[10px] bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded-full font-bold">OWNER</span>}
+                {isAdmin && <span className="text-[10px] bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded-full font-bold">ADMIN</span>}
+                <svg className={`w-3.5 h-3.5 text-zinc-500 transition-transform ${profileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-52 bg-[#16161a] border border-[#2a2a30] rounded-xl shadow-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#2a2a30]">
+                    <p className="text-white text-sm font-medium truncate">{user.email}</p>
+                    <p className="text-zinc-500 text-xs capitalize">{user.role} account</p>
+                  </div>
+                  <div className="py-1">
+                    <Link
+                      href="/dashboard"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-[#1e1e24] transition-colors"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      <span>🚗</span> My Build Plan
+                    </Link>
+                    {isStaff && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-[#1e1e24] transition-colors"
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <span>⚡</span> {isOwner ? 'Owner Panel' : 'Admin Panel'}
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => { setProfileOpen(false); signOut() }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-400 hover:text-red-400 hover:bg-[#1e1e24] transition-colors"
+                    >
+                      <span>🚪</span> Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/signin"
+                className="text-sm text-zinc-400 hover:text-white transition-colors px-4 py-2"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/intake"
+                className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-all duration-150 purple-glow-sm"
+              >
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Mobile Menu Toggle */}
         <button
           className="md:hidden text-zinc-400 hover:text-white"
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle menu"
         >
           {isOpen ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           )}
         </button>
       </div>
 
-      {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden border-t border-[#2a2a30] bg-[#111113] px-6 py-4 flex flex-col gap-4">
           {navLinks.map((link) => (
@@ -82,15 +165,43 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/intake"
-            className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg text-center transition-all"
-            onClick={() => setIsOpen(false)}
-          >
-            Get Started
-          </Link>
+          {isStaff && (
+            <Link href="/admin" className="text-sm text-purple-400 font-medium" onClick={() => setIsOpen(false)}>
+              ⚡ {isOwner ? 'Owner Panel' : 'Admin Panel'}
+            </Link>
+          )}
+          {user ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="text-sm text-zinc-400 hover:text-white transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                🚗 My Build Plan
+              </Link>
+              <button
+                onClick={() => { setIsOpen(false); signOut() }}
+                className="text-left text-sm text-red-400 hover:text-red-300"
+              >
+                🚪 Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/signin" className="text-sm text-zinc-400 hover:text-white" onClick={() => setIsOpen(false)}>
+                Sign In
+              </Link>
+              <Link
+                href="/intake"
+                className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg text-center transition-all"
+                onClick={() => setIsOpen(false)}
+              >
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
       )}
     </nav>
-  );
+  )
 }
