@@ -1,0 +1,25 @@
+You are cleaning up bad user-facing recommended-part links in this Next.js app.
+Project: C:\Users\actio\mod
+
+Context I already verified:
+- The main detailed recommended-part links shown to users are defined in lib/specific-parts.ts
+- They are rendered in app/dashboard/parts/[id]/page.tsx
+- Prioritize the high-impact parts users are most likely to click in the main recommendation flow, especially common top recommendations from parts-database/parts-matcher: cold-air-intake, catback-exhaust, lowering-springs, performance-brake-pads, coilovers, wheels/tires, and other clearly prominent categories if time allows.
+
+Your task:
+1) Audit the currently surfaced recommendation links in lib/specific-parts.ts.
+2) Replace broad/stale/broken links with direct product pages whenever you can verify them confidently.
+3) If an exact product page cannot be confidently verified, use the most honest direct family/search/vehicle-selector page and make the retailer label match reality.
+4) Remove or downgrade clearly bad/misleading links rather than leaving them.
+5) Keep the app buildable.
+6) Run sanity checks after edits (at least type/build/lint-equivalent project checks that are practical here) and report results.
+
+Important constraints:
+- Focus on the main site’s recommendations, not an AI demo.
+- Be conservative: don’t invent direct product pages.
+- Prefer manufacturer product pages or legitimate fitment/search pages over vague homepages.
+- If a product is universal or not vehicle-specific, label it honestly instead of pretending it is vehicle-filtered.
+- Summarize what you changed and what still remains questionable.
+
+When completely finished, run this command to notify me:
+openclaw system event --text "Done: recommended-part links cleanup finished"

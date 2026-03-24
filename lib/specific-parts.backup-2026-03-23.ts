@@ -1,3 +1,5 @@
+import type { IntakeData } from './types'
+
 // Specific product options shown when a user drills into a part
 
 export interface SpecificProduct {
@@ -35,6 +37,131 @@ const EBAY_V = (q: string) =>
 // JEGS: exact phrase + vehicle terms to reduce broad matches
 const JEGS_V = (q: string) =>
   `https://www.jegs.com/webapp/wcs/stores/servlet/SearchResultsPageCmd?Ntt=${encodeURIComponent(`"${q}"`)}+%22{year}%22+%22{make}%22+%22{model}%22`
+
+type VehiclePartOverride = {
+  summitPartNumber?: string
+  jegsPartNumber?: string
+  amazonAsin?: string
+  ebayItemId?: string
+  directUrlByRetailerName?: Record<string, string>
+}
+
+// Start with an empty map and fill exact part numbers over time.
+// This is where you can pin true one-click SKU links for this vehicle.
+const DURANGO_2014_LIMITED_PART_MAP: Record<string, VehiclePartOverride> = {}
+
+function hydrateTemplate(url: string, intake: IntakeData): string {
+  return url
+    .replace(/{year}/g, encodeURIComponent(intake.year))
+    .replace(/{make}/g, encodeURIComponent(intake.make))
+    .replace(/{model}/g, encodeURIComponent(intake.model))
+}
+
+function normalizeVehicleToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+export function isDurango2014Limited(intake: IntakeData): boolean {
+  const year = normalizeVehicleToken(intake.year)
+  const make = normalizeVehicleToken(intake.make)
+  const model = normalizeVehicleToken(intake.model)
+  const trim = normalizeVehicleToken(intake.trim)
+
+  return year === '2014' && make === 'dodge' && model === 'durango' && trim.includes('limited')
+}
+
+function retailerType(name: string): 'summit' | 'ebay' | 'jegs' | 'amazon' | 'other' {
+  const n = name.toLowerCase()
+  if (n.includes('summit racing')) return 'summit'
+  if (n.includes('ebay')) return 'ebay'
+  if (n.includes('jegs')) return 'jegs'
+  if (n.includes('amazon')) return 'amazon'
+  return 'other'
+}
+
+export function resolveRetailerUrl(product: SpecificProduct, retailer: { name: string; url: string }, intake: IntakeData): string {
+  const fallback = hydrateTemplate(retailer.url, intake)
+  if (!isDurango2014Limited(intake)) {
+    return fallback
+  }
+
+  const override = DURANGO_2014_LIMITED_PART_MAP[product.id]
+  if (override?.directUrlByRetailerName?.[retailer.name]) {
+    return override.directUrlByRetailerName[retailer.name]
+  }
+
+  const exactPhrase = `${product.brand} ${product.name}`.trim()
+  const preciseQuery = product.searchQuery?.trim() || exactPhrase
+  const carPhrase = '2014 Dodge Durango Limited'
+  const kind = retailerType(retailer.name)
+  const lowerName = retailer.name.toLowerCase()
+
+  // Eibach product-family pages don't always provide Durango-specific direct fitment quickly.
+  // For this vehicle, route those buttons to a tighter marketplace query instead.
+  if (lowerName.includes('eibach')) {
+    return `https://www.amazon.com/s?k=${encodeURIComponent(`"${preciseQuery}" "${carPhrase}"`)}&i=automotive`
+  }
+
+  if (kind === 'summit') {
+    if (override?.summitPartNumber) {
+      return `https://www.summitracing.com/parts/${encodeURIComponent(override.summitPartNumber)}`
+    }
+    // Summit often redirects broad searches to homepage; default to Amazon when no exact Summit SKU is mapped.
+    return `https://www.amazon.com/s?k=${encodeURIComponent(`"${preciseQuery}" "${carPhrase}"`)}&i=automotive`
+  }
+
+  if (kind === 'ebay') {
+    if (override?.ebayItemId) {
+      return `https://www.ebay.com/itm/${encodeURIComponent(override.ebayItemId)}`
+    }
+    return `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(`"${preciseQuery}" "${carPhrase}"`)}&_sacat=33743&LH_ItemCondition=1000&LH_BIN=1&LH_TitleDesc=1&_sop=15`
+  }
+
+  if (kind === 'jegs') {
+    if (override?.jegsPartNumber) {
+      return `https://www.jegs.com/i/${encodeURIComponent(override.jegsPartNumber)}`
+    }
+    return `https://www.amazon.com/s?k=${encodeURIComponent(`"${preciseQuery}" "${carPhrase}"`)}&i=automotive`
+  }
+
+  if (kind === 'amazon') {
+    if (override?.amazonAsin) {
+      return `https://www.amazon.com/dp/${encodeURIComponent(override.amazonAsin)}`
+    }
+    return `https://www.amazon.com/s?k=${encodeURIComponent(`"${preciseQuery}" "${carPhrase}"`)}&i=automotive`
+  }
+
+  return fallback
+}
+
+export function resolveRetailerDisplay(
+  product: SpecificProduct,
+  retailer: { name: string; icon: string },
+  intake: IntakeData,
+): { name: string; icon: string } {
+  if (!isDurango2014Limited(intake)) {
+    return retailer
+  }
+
+  const override = DURANGO_2014_LIMITED_PART_MAP[product.id]
+  const kind = retailerType(retailer.name)
+  const lowerName = retailer.name.toLowerCase()
+
+  if (lowerName.includes('eibach')) {
+    return {
+      name: 'Amazon — Exact Match',
+      icon: '🛒',
+    }
+  }
+  if (kind === 'summit' && !override?.summitPartNumber) {
+    return {
+      name: 'Amazon — Exact Match (your vehicle)',
+      icon: '🛒',
+    }
+  }
+
+  return retailer
+}
 
 export const partDetails: PartDetail[] = [
 

@@ -6,31 +6,31 @@ import Button from "@/components/ui/Button";
 const faqs = [
   {
     q: "Do you sell parts?",
-    a: "No. Modvora Labs is a planning and advisory service only. We do not sell, stock, or ship any physical parts. Our plans tell you what to look for — sourcing and purchasing is up to you.",
+    a: "No. Modvora is a planning platform, not a parts store. We help you figure out what fits, what makes sense, and what to buy next — but sourcing and purchasing are still up to you.",
   },
   {
     q: "Is this for any car?",
     a: "Yes. We work with all makes and models — domestic, import, European, classic, and modern. As long as you can describe your vehicle, we can build a plan around it.",
   },
   {
-    q: "How long does it take to receive my plan?",
-    a: "Delivery times range from 2 to 5 business days depending on the service selected. Consultations are typically delivered within 2 business days, while Full Build Plans take up to 5.",
+    q: "What do I get on the free tier?",
+    a: "Free gives you a usable starting point: one vehicle slot, recommendations tied to your platform, phased planning, visualizer access, and dashboard tracking.",
   },
   {
-    q: "Do you give exact part suggestions?",
-    a: "We provide specific part categories, brands, and types based on your car and goals. While we don't provide live pricing or specific purchase links, our plans give you enough detail to shop with confidence.",
+    q: "What does Premium include?",
+    a: "Premium is the deeper monthly layer. It adds more detailed planner features, richer recommendations, saved build progress, premium tools, and support for extra vehicle slots at $2/month each.",
   },
   {
-    q: "Can I ask questions after receiving my plan?",
-    a: "Yes. Every plan includes a follow-up window where you can ask clarifying questions. We want to make sure you fully understand your recommendations before you commit to anything.",
+    q: "Do I need Premium to use Modvora?",
+    a: "No. The product is intentionally useful before you pay. Premium is for people who want a more involved planning workspace over time.",
   },
   {
-    q: "Is this for performance or looks?",
-    a: "Both. We offer separate services for performance-focused builds (Performance Path) and style-focused builds (Style Upgrade Plan), as well as combined plans that address both. You choose your direction when you submit your vehicle.",
+    q: "Can I track more than one car?",
+    a: "Yes. Premium includes your main vehicle, and you can add extra car slots for $2/month each if you want to manage more builds in the same account.",
   },
   {
-    q: "Do you help with budget builds?",
-    a: "Absolutely — that's what the Budget Build Strategy is designed for. We'll identify the highest-impact modifications for your car at the lowest possible cost, with DIY-friendly options highlighted.",
+    q: "Is expert help still available?",
+    a: "Yes. Consultation is still available as an optional add-on when you want a human opinion on a tricky decision, but it is no longer the core product.",
   },
   {
     q: "Can you help with older cars?",
@@ -76,7 +76,6 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function FaqPage() {
   return (
     <>
-      {/* Header */}
       <section className="pt-32 pb-16 px-6 text-center relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="relative max-w-2xl mx-auto">
@@ -85,12 +84,11 @@ export default function FaqPage() {
             Common Questions
           </h1>
           <p className="text-zinc-400 text-lg leading-relaxed">
-            Everything you need to know before submitting your vehicle.
+            Everything you need to know before setting up your build.
           </p>
         </div>
       </section>
 
-      {/* FAQs */}
       <section className="py-12 px-6">
         <div className="max-w-3xl mx-auto space-y-3">
           {faqs.map((faq) => (
@@ -99,7 +97,6 @@ export default function FaqPage() {
         </div>
       </section>
 
-      {/* Still have questions */}
       <section className="py-20 px-6 text-center">
         <div className="max-w-lg mx-auto bg-[#16161a] border border-[#2a2a30] rounded-2xl p-10">
           <h2 className="text-xl font-bold text-white mb-3">Still have questions?</h2>

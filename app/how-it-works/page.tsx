@@ -4,9 +4,9 @@ import Button from "@/components/ui/Button";
 const steps = [
   {
     number: "01",
-    title: "Choose a Service",
+    title: "Add your car to the garage",
     description:
-      "Browse our service packages and select the plan that fits your build goals — performance, style, budget, or a full roadmap.",
+      "Start free by entering your vehicle details. It takes two minutes and immediately unlocks your personal build dashboard with journal, tracker, and milestones.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -16,9 +16,9 @@ const steps = [
   },
   {
     number: "02",
-    title: "Enter Your Vehicle Details",
+    title: "Log your mods and track progress",
     description:
-      "Fill out our intake form with your car's year, make, model, trim, engine, drivetrain, mileage, and any mods you already have.",
+      "Record every modification you've made or plan to make — with cost, status, notes, and photos. Mark things as planned, purchased, or installed as your build moves forward.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -28,9 +28,9 @@ const steps = [
   },
   {
     number: "03",
-    title: "Submit Your Goals & Budget",
+    title: "Set milestones and plan ahead",
     description:
-      "Tell us what you want to achieve — more power, better handling, head-turning looks, or all of it. Set your budget range so we build within your limits.",
+      "Create custom milestones for your build roadmap and check them off as you go. Add your own steps like an engine swap, a wrap, or anything else that fits your vision.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -40,9 +40,9 @@ const steps = [
   },
   {
     number: "04",
-    title: "Receive Your Custom Build Plan",
+    title: "Share your build with the community",
     description:
-      "We review your submission and send back a full, custom plan tailored specifically to your vehicle. No templates. No filler. Just actionable guidance.",
+      "When you're ready, publish your build to the community gallery. Other builders can discover your car, see your mods, and get inspired — and you can browse theirs.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -53,49 +53,44 @@ const steps = [
 ];
 
 const faqs = [
-  { q: "How long does it take to receive my plan?", a: "Delivery ranges from 2–5 business days depending on the service selected." },
-  { q: "What format is the plan delivered in?", a: "Plans are delivered as a detailed PDF document sent to your email." },
-  { q: "Can I ask questions after receiving my plan?", a: "Yes. Each plan includes a follow-up window for clarification questions." },
+  { q: "Do I need Premium to use Modvora?", a: "No. The full garage, build journal, milestone tracker, and community are all free. Premium adds extra tools and car slots for builders who want more." },
+  { q: "What do I get after adding my car?", a: "You immediately get a personal build dashboard where you can log mods, track costs, set milestones, add photos, and plan your next steps." },
+  { q: "Can I track multiple cars?", a: "Yes. You can manage multiple vehicles in your garage, each with its own build journal, tracker, and history. Extra car slots are available for Premium members." },
 ];
 
 export default function HowItWorksPage() {
   return (
     <>
-      {/* Header */}
       <section className="pt-32 pb-16 px-6 text-center relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="relative max-w-3xl mx-auto">
           <p className="text-purple-400 text-sm font-medium tracking-widest uppercase mb-3">Process</p>
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-5">
-            How It Works
+            How Modvora works
           </h1>
           <p className="text-zinc-400 text-lg leading-relaxed">
-            Four simple steps between you and a custom build plan. No phone calls. No guesswork.
+            Add your car, start logging your build, and share it when you're ready. The idea is to make the product useful from day one — a real home for your project, not a one-time tool.
           </p>
         </div>
       </section>
 
-      {/* Steps */}
       <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="relative">
-            {/* Vertical line on desktop */}
             <div className="absolute left-[28px] top-8 bottom-8 w-px bg-gradient-to-b from-purple-600/40 via-purple-600/20 to-transparent hidden md:block" />
 
             <div className="space-y-8">
-              {steps.map((step, i) => (
+              {steps.map((step) => (
                 <div
                   key={step.number}
                   className="relative flex gap-6 md:gap-8 bg-[#16161a] border border-[#2a2a30] rounded-xl p-7 card-hover"
                 >
-                  {/* Number badge */}
                   <div className="flex-shrink-0">
                     <div className="w-14 h-14 rounded-xl bg-purple-600/15 border border-purple-600/25 flex items-center justify-center text-purple-400">
                       {step.icon}
                     </div>
                   </div>
 
-                  {/* Content */}
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-purple-600/60 text-xs font-mono font-bold">{step.number}</span>
@@ -110,7 +105,6 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      {/* Quick FAQs */}
       <section className="py-16 px-6 bg-[#0d0d0f]">
         <div className="max-w-3xl mx-auto">
           <SectionHeader
@@ -129,14 +123,13 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="py-24 px-6 text-center">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to get started?</h2>
-          <p className="text-zinc-400 mb-8">Submit your vehicle and goals — we&apos;ll handle the rest.</p>
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to set up your build?</h2>
+          <p className="text-zinc-400 mb-8">Enter your vehicle and let the planner start doing useful work.</p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Button href="/intake" size="lg">Submit Your Vehicle</Button>
-            <Button href="/services" variant="outline" size="lg">View Services</Button>
+            <Button href="/intake" size="lg">Start My Build</Button>
+            <Button href="/services" variant="outline" size="lg">Compare plans</Button>
           </div>
         </div>
       </section>

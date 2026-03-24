@@ -1,22 +1,72 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { useAuth, signOut } from '@/hooks/useAuth'
+import { usePathname } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import type { SessionUser } from '@/lib/session'
+import { signOut } from '@/hooks/useAuth'
 
 const navLinks = [
   { href: '/', label: 'Home' },
+  { href: '/community', label: 'Community' },
+  { href: '/dashboard/mod-laws', label: 'Mod Law Map' },
   { href: '/services', label: 'Services' },
   { href: '/how-it-works', label: 'How It Works' },
-  { href: '/about', label: 'About' },
   { href: '/faq', label: 'FAQ' },
-  { href: '/contact', label: 'Contact' },
 ]
 
-export default function Navbar() {
+export default function Navbar({ initialUser = null }: { initialUser?: SessionUser | null }) {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const { user, loading } = useAuth()
+  const profileRef = useRef<HTMLDivElement | null>(null)
+  const user = initialUser
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+
+  useEffect(() => {
+    setIsOpen(false)
+    setProfileOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!profileRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+
+    if (profileOpen) {
+      document.addEventListener('mousedown', handlePointerDown)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+    }
+  }, [profileOpen])
+
+  useEffect(() => {
+    if (!isOpen) {
+      document.body.style.overflow = ''
+      return
+    }
+
+    document.body.style.overflow = 'hidden'
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+        setProfileOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isOpen])
 
   const isOwner = user?.role === 'owner'
   const isAdmin = user?.role === 'admin'
@@ -40,7 +90,8 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-zinc-400 hover:text-white transition-colors duration-150"
+              aria-current={isActive(link.href) ? 'page' : undefined}
+              className={`text-sm transition-colors duration-150 ${isActive(link.href) ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
             >
               {link.label}
             </Link>
@@ -48,7 +99,8 @@ export default function Navbar() {
           {isStaff && (
             <Link
               href="/admin"
-              className="text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
+              aria-current={isActive('/admin') ? 'page' : undefined}
+              className={`text-sm transition-colors font-medium ${isActive('/admin') ? 'text-purple-300' : 'text-purple-400 hover:text-purple-300'}`}
             >
               {isOwner ? 'Owner ⚡' : 'Admin ⚡'}
             </Link>
@@ -56,7 +108,8 @@ export default function Navbar() {
           {(isStaff || isCustomer) && (
             <Link
               href="/dashboard"
-              className="text-sm text-zinc-400 hover:text-white transition-colors duration-150"
+              aria-current={isActive('/dashboard') ? 'page' : undefined}
+              className={`text-sm transition-colors duration-150 ${isActive('/dashboard') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
             >
               My Build
             </Link>
@@ -64,10 +117,8 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          {loading ? (
-            <div className="w-8 h-8 rounded-full bg-[#2a2a30] animate-pulse" />
-          ) : user ? (
-            <div className="relative">
+          {user ? (
+            <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 bg-[#16161a] hover:bg-[#1e1e24] border border-[#2a2a30] hover:border-purple-500/30 rounded-xl px-3 py-2 transition-all"
@@ -97,7 +148,14 @@ export default function Navbar() {
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-[#1e1e24] transition-colors"
                       onClick={() => setProfileOpen(false)}
                     >
-                      <span>🚗</span> My Build Plan
+                      <span>🏎️</span> My Build Plan
+                    </Link>
+                    <Link
+                      href="/dashboard/publish"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-[#1e1e24] transition-colors"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      <span>📸</span> Publish Build
                     </Link>
                     {isStaff && (
                       <Link
@@ -109,7 +167,10 @@ export default function Navbar() {
                       </Link>
                     )}
                     <button
-                      onClick={() => { setProfileOpen(false); signOut() }}
+                      onClick={() => {
+                        setProfileOpen(false)
+                        signOut()
+                      }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-400 hover:text-red-400 hover:bg-[#1e1e24] transition-colors"
                     >
                       <span>🚪</span> Sign Out
@@ -140,6 +201,8 @@ export default function Navbar() {
           className="md:hidden text-zinc-400 hover:text-white"
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle menu"
+          aria-expanded={isOpen}
+          aria-controls="mobile-nav"
         >
           {isOpen ? (
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -154,12 +217,13 @@ export default function Navbar() {
       </div>
 
       {isOpen && (
-        <div className="md:hidden border-t border-[#2a2a30] bg-[#111113] px-6 py-4 flex flex-col gap-4">
+        <div id="mobile-nav" className="md:hidden border-t border-[#2a2a30] bg-[#111113] px-6 py-4 flex max-h-[calc(100vh-4rem)] flex-col gap-4 overflow-y-auto">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-zinc-400 hover:text-white transition-colors"
+              aria-current={isActive(link.href) ? 'page' : undefined}
+              className={`text-sm transition-colors ${isActive(link.href) ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
               onClick={() => setIsOpen(false)}
             >
               {link.label}
@@ -174,13 +238,24 @@ export default function Navbar() {
             <>
               <Link
                 href="/dashboard"
+                aria-current={isActive('/dashboard') ? 'page' : undefined}
+                className={`text-sm transition-colors ${isActive('/dashboard') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+                onClick={() => setIsOpen(false)}
+              >
+                🏎️ My Build Plan
+              </Link>
+              <Link
+                href="/dashboard/publish"
                 className="text-sm text-zinc-400 hover:text-white transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                🚗 My Build Plan
+                📸 Publish Build
               </Link>
               <button
-                onClick={() => { setIsOpen(false); signOut() }}
+                onClick={() => {
+                  setIsOpen(false)
+                  signOut()
+                }}
                 className="text-left text-sm text-red-400 hover:text-red-300"
               >
                 🚪 Sign Out
