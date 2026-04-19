@@ -248,3 +248,79 @@ export function addBuildPhoto(vehicleId: string, input: { caption: string; image
   localStorage.setItem(BUILD_PHOTOS_KEY, JSON.stringify(byVehicle))
   return next
 }
+
+export const PART_PHOTOS_KEY = 'modvora_part_photos_by_vehicle'
+
+export type PartPhotoTag = 'unboxing' | 'installation' | 'finished'
+
+export interface PartPhoto {
+  id: string
+  partId: string
+  partName: string
+  tag: PartPhotoTag
+  imageData: string
+  caption: string
+  createdAt: string
+}
+
+export function loadPartPhotos(vehicleId: string): PartPhoto[] {
+  const byVehicle = readJson<Record<string, PartPhoto[]>>(PART_PHOTOS_KEY, {})
+  return byVehicle[vehicleId] ?? []
+}
+
+export function savePartPhoto(vehicleId: string, photo: PartPhoto) {
+  const byVehicle = readJson<Record<string, PartPhoto[]>>(PART_PHOTOS_KEY, {})
+  const list = byVehicle[vehicleId] ?? []
+  byVehicle[vehicleId] = [photo, ...list]
+  localStorage.setItem(PART_PHOTOS_KEY, JSON.stringify(byVehicle))
+}
+
+export function deletePartPhoto(vehicleId: string, photoId: string) {
+  const byVehicle = readJson<Record<string, PartPhoto[]>>(PART_PHOTOS_KEY, {})
+  const list = byVehicle[vehicleId] ?? []
+  byVehicle[vehicleId] = list.filter((p) => p.id !== photoId)
+  localStorage.setItem(PART_PHOTOS_KEY, JSON.stringify(byVehicle))
+}
+
+export const BUILD_JOURNAL_KEY = 'modvora_build_journal_by_vehicle'
+
+export interface JournalEntry {
+  id: string
+  date: string           // 'YYYY-MM-DD' — the day this happened
+  mileage?: number       // odometer reading at time of entry
+  narrative: string      // detailed notes paragraph
+  photos: string[]       // compressed base64 data URLs
+  isMilestone: boolean
+  milestoneLabel?: string // e.g., "First Start", "Paint Day"
+  partId?: string        // optional link to a tracked part
+  partName?: string
+  mood?: 'hyped' | 'grinding' | 'satisfied' | 'problem_solved' | 'frustrated'
+  timeSpent?: number     // hours spent in the garage
+  createdAt: string
+}
+
+export function loadJournal(vehicleId: string): JournalEntry[] {
+  const byVehicle = readJson<Record<string, JournalEntry[]>>(BUILD_JOURNAL_KEY, {})
+  return byVehicle[vehicleId] ?? []
+}
+
+export function saveJournalEntry(vehicleId: string, entry: JournalEntry) {
+  const byVehicle = readJson<Record<string, JournalEntry[]>>(BUILD_JOURNAL_KEY, {})
+  const list = byVehicle[vehicleId] ?? []
+  byVehicle[vehicleId] = [entry, ...list]
+  localStorage.setItem(BUILD_JOURNAL_KEY, JSON.stringify(byVehicle))
+}
+
+export function updateJournalEntry(vehicleId: string, updated: JournalEntry) {
+  const byVehicle = readJson<Record<string, JournalEntry[]>>(BUILD_JOURNAL_KEY, {})
+  const list = byVehicle[vehicleId] ?? []
+  byVehicle[vehicleId] = list.map((e) => (e.id === updated.id ? updated : e))
+  localStorage.setItem(BUILD_JOURNAL_KEY, JSON.stringify(byVehicle))
+}
+
+export function deleteJournalEntry(vehicleId: string, entryId: string) {
+  const byVehicle = readJson<Record<string, JournalEntry[]>>(BUILD_JOURNAL_KEY, {})
+  const list = byVehicle[vehicleId] ?? []
+  byVehicle[vehicleId] = list.filter((e) => e.id !== entryId)
+  localStorage.setItem(BUILD_JOURNAL_KEY, JSON.stringify(byVehicle))
+}

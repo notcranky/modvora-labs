@@ -8,6 +8,7 @@ export interface IntakeData {
   trim: string
   engine: string
   drivetrain: string
+  transmission: string
   mileage: string
   budget: string
   goals: string
@@ -75,5 +76,8 @@ export interface Part {
   youtubeQuery: string // uses {year} {make} {model} placeholders
   benefits: string[]
   installNotes?: string
+  requiresTransmission?: 'manual' | 'automatic'
+  requires?: string[]       // Part IDs that should also be planned/installed
+  conflictsWith?: string[]  // Part IDs that cannot coexist with this part
   phase: number // 1 = do first, 2 = second, 3 = later
 }

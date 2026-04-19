@@ -144,6 +144,7 @@ export const partsDatabase: Part[] = [
     youtubeQuery: '{year} {make} {model} headers install dyno results horsepower',
     benefits: ['Significant horsepower gain', 'Improved torque across RPM range', 'Better sound', 'Reduced exhaust gas temperature'],
     installNotes: 'A professional tune is recommended after headers installation to maximize gains. May require catalytic converter relocation.',
+    requires: ['catback-exhaust'],
     phase: 3,
   },
 
@@ -193,6 +194,7 @@ export const partsDatabase: Part[] = [
     youtubeQuery: '{year} {make} {model} coilover install before after stance review',
     benefits: ['Fully adjustable ride height', 'Improved cornering performance', 'Better visual stance', 'Adjustable damping for street or track'],
     installNotes: 'Alignment required after installation. Recommended to use a professional alignment shop. Spring pre-load should be set to your weight.',
+    conflictsWith: ['lowering-springs'],
     phase: 2,
   },
 
@@ -241,6 +243,7 @@ export const partsDatabase: Part[] = [
     youtubeQuery: '{year} {make} {model} lowering springs eibach install before after',
     benefits: ['Improved stance and appearance', 'Lower center of gravity', 'Reduced body roll', 'Compatible with factory shocks'],
     installNotes: 'Alignment required after installation. Use spring compressors safely when installing.',
+    conflictsWith: ['coilovers'],
     phase: 1,
   },
 
@@ -705,6 +708,7 @@ export const partsDatabase: Part[] = [
     youtubeQuery: '{year} {make} {model} short shifter install before after review feel',
     benefits: ['Faster gear changes', 'More precise shift feel', 'Reduced shift throw by 30–50%', 'Improved driving engagement'],
     installNotes: 'Manual transmission only. Some vehicles require center console removal.',
+    requiresTransmission: 'manual',
     phase: 2,
   },
 
@@ -850,6 +854,7 @@ export const partsDatabase: Part[] = [
     youtubeQuery: '{year} {make} {model} turbo kit install build dyno horsepower',
     benefits: ['Massive horsepower gains', 'Completely transforms the car\'s character', 'Scalable power with boost tuning', 'Dramatic sound change under boost'],
     installNotes: 'Requires supporting modifications: fuel injectors, fuel pump, intercooler, and a professional dyno tune. Professional installation strongly recommended.',
+    requires: ['ecu-tune'],
     phase: 3,
   },
 ]

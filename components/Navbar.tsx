@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -9,7 +10,7 @@ import { signOut } from '@/hooks/useAuth'
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/community', label: 'Community' },
-  { href: '/dashboard/mod-laws', label: 'Mod Law Map' },
+  { href: '/community/explore', label: 'Explore' },
   { href: '/services', label: 'Services' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/faq', label: 'FAQ' },
@@ -74,12 +75,10 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
   const isCustomer = user?.role === 'customer'
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0b]/90 backdrop-blur-md border-b border-[#2a2a30]">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#121212]/95 backdrop-blur-xl border-b border-white/[0.05]">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded bg-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">M</span>
-          </div>
+          <Image src="/favicon-logo.png" alt="Modvora" width={677} height={369} className="h-9 w-auto shrink-0" />
           <span className="font-semibold text-white text-lg tracking-tight">
             Modvora <span className="text-purple-400">Labs</span>
           </span>
@@ -91,9 +90,12 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
               key={link.href}
               href={link.href}
               aria-current={isActive(link.href) ? 'page' : undefined}
-              className={`text-sm transition-colors duration-150 ${isActive(link.href) ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+              className={`relative text-sm transition-colors duration-150 pb-0.5 ${isActive(link.href) ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
             >
               {link.label}
+              {isActive(link.href) && (
+                <span className="absolute -bottom-[19px] left-0 right-0 h-px bg-purple-500" />
+              )}
             </Link>
           ))}
           {isStaff && (
@@ -117,6 +119,16 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
         </div>
 
         <div className="hidden md:flex items-center gap-3">
+          <Link
+            href="/community/me"
+            aria-label="My profile"
+            className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${isActive('/community/me') ? 'border-purple-500/50 bg-purple-500/10 text-purple-300' : 'border-[#2a2a35] bg-[#18181f] text-zinc-400 hover:border-purple-500/40 hover:text-white'}`}
+          >
+            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-none stroke-current" strokeWidth={1.8}>
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+          </Link>
           {user ? (
             <div className="relative" ref={profileRef}>
               <button
@@ -189,7 +201,7 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
               </Link>
               <Link
                 href="/intake"
-                className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-all duration-150 purple-glow-sm"
+                className="bg-purple-600 hover:bg-purple-500 active:scale-[0.97] hover:scale-[1.02] text-white text-sm font-semibold px-5 py-2 rounded-xl transition-all duration-150 shadow-sm shadow-purple-900/30"
               >
                 Get Started
               </Link>
@@ -217,7 +229,7 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
       </div>
 
       {isOpen && (
-        <div id="mobile-nav" className="md:hidden border-t border-[#2a2a30] bg-[#111113] px-6 py-4 flex max-h-[calc(100vh-4rem)] flex-col gap-4 overflow-y-auto">
+        <div id="mobile-nav" className="md:hidden border-t border-white/[0.04] bg-[#121212] px-6 py-4 flex max-h-[calc(100vh-4rem)] flex-col gap-4 overflow-y-auto">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -229,6 +241,14 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/community/me"
+            aria-current={isActive('/community/me') ? 'page' : undefined}
+            className={`text-sm transition-colors ${isActive('/community/me') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+            onClick={() => setIsOpen(false)}
+          >
+            My Profile
+          </Link>
           {isStaff && (
             <Link href="/admin" className="text-sm text-purple-400 font-medium" onClick={() => setIsOpen(false)}>
               ⚡ {isOwner ? 'Owner Panel' : 'Admin Panel'}
@@ -277,6 +297,73 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
           )}
         </div>
       )}
+      {/* ── Floating bottom nav — mobile only ──────────────────────────── */}
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 nav-enter px-3"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="flex items-center justify-around rounded-2xl border border-white/[0.06] bg-[#161618]/95 backdrop-blur-xl px-1 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          {(user ? [
+            {
+              href: '/',
+              label: 'Home',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>,
+            },
+            {
+              href: '/community',
+              label: 'Community',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>,
+            },
+            {
+              href: '/dashboard',
+              label: 'My Build',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg>,
+            },
+            {
+              href: '/community/me',
+              label: 'Profile',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>,
+            },
+          ] : [
+            {
+              href: '/',
+              label: 'Home',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>,
+            },
+            {
+              href: '/community',
+              label: 'Community',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>,
+            },
+            {
+              href: '/dashboard',
+              label: 'My Build',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg>,
+            },
+            {
+              href: '/signin',
+              label: 'Sign In',
+              icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>,
+            },
+          ]).map((item) => {
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex flex-1 flex-col items-center gap-1 rounded-xl px-1 py-2 transition-all active:scale-[0.94] ${
+                  active ? 'text-white bg-white/[0.06]' : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                <span className={active ? 'text-[#A020F0]' : ''}>{item.icon}</span>
+                <span className="text-[10px] font-medium leading-none">{item.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
     </nav>
   )
 }

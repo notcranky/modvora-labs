@@ -558,14 +558,14 @@ const INTAKE_DRAFT_KEY = "modvora_intake_draft_v1";
 interface FormData {
   name: string; email: string; service: string;
   year: string; make: string; model: string; trim: string;
-  engine: string; drivetrain: string; mileage: string;
+  engine: string; drivetrain: string; transmission: string; mileage: string;
   budget: string; goals: string; focus: string;
   currentMods: string; notes: string;
 }
 
 const initialForm: FormData = {
   name: "", email: "", service: "", year: "", make: "",
-  model: "", trim: "", engine: "", drivetrain: "", mileage: "",
+  model: "", trim: "", engine: "", drivetrain: "", transmission: "", mileage: "",
   budget: "", goals: "", focus: "", currentMods: "", notes: "",
 };
 
@@ -637,6 +637,7 @@ export default function IntakeForm() {
       trim: vehicle.trim,
       engine: vehicle.engine,
       drivetrain: vehicle.drivetrain,
+      transmission: vehicle.transmission ?? '',
       mileage: vehicle.mileage,
       budget: vehicle.budget,
       goals: vehicle.goals,
@@ -724,7 +725,7 @@ export default function IntakeForm() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-white font-semibold">You&apos;re setting up the planner</p>
-              <p className="text-zinc-400 text-sm mt-1">Finish the basics and Modvora will take you straight to your dashboard setup.</p>
+              <p className="text-zinc-400 text-sm mt-1">Modvora uses your engine, transmission, drivetrain, and goals to filter and rank parts specifically for your build.</p>
             </div>
             <div className="text-sm text-purple-300 font-medium">{completionPercent}% complete</div>
           </div>
@@ -884,6 +885,21 @@ export default function IntakeForm() {
                 <select name="drivetrain" value={form.drivetrain} onChange={handleChange} className={selectClass}>
                   <option value="">Select...</option>
                   {drivetrains.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {arrow}
+              </div>
+            </div>
+
+            {/* Transmission */}
+            <div>
+              <label className={labelClass}>Transmission</label>
+              <div className="relative">
+                <select name="transmission" value={form.transmission} onChange={handleChange} className={selectClass}>
+                  <option value="">Select...</option>
+                  <option value="Manual">Manual (MT)</option>
+                  <option value="Automatic">Automatic (AT)</option>
+                  <option value="DCT">Dual-Clutch (DCT)</option>
+                  <option value="CVT">CVT</option>
                 </select>
                 {arrow}
               </div>

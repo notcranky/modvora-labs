@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { getVehicleLabel, loadVehicles, SavedVehicle } from '@/lib/garage'
 import HeroFrameEditor from '@/components/HeroFrameEditor'
-import { getCommunityDraftsForVehicle, getEditableCommunityPost, upsertCommunityPost, publishToSupabase, CommunityBuildStatus, CommunityHeroFrame, CommunityPublishState } from '@/lib/community'
-import { isLocalImageRef, migrateDataUrlToLocalImage, saveLocalImageFile, useResolvedImageMap } from '@/lib/local-images'
+import { getCommunityDraftsForVehicle, getEditableCommunityPost, upsertCommunityPost, publishToSupabase, deleteCommunityPost, fetchPublishedBuilds, CommunityBuildStatus, CommunityHeroFrame, CommunityPublishState } from '@/lib/community'
+import { isLocalImageRef, migrateDataUrlToLocalImage, resolveLocalImageToDataUrl, saveLocalImageFile, useResolvedImageMap } from '@/lib/local-images'
 
 const MAX_PHOTO_COUNT = 12
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
@@ -155,6 +155,60 @@ const placeholderImages = [
 
 const defaultHeroFrame: CommunityHeroFrame = { x: 50, y: 50, zoom: 1, orientation: 'landscape' }
 
+function TagChipInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
+  const [input, setInput] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function addTag(raw: string) {
+    const tag = raw.trim().replace(/^#+/, '').toLowerCase()
+    if (!tag || tags.includes(tag)) return
+    onChange([...tags, tag])
+  }
+
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value
+    if (val.endsWith(' ') || val.endsWith(',')) {
+      const tag = val.slice(0, -1)
+      if (tag.trim()) addTag(tag)
+      setInput('')
+    } else {
+      setInput(val)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (input.trim()) { addTag(input); setInput('') }
+    } else if (e.key === 'Backspace' && !input && tags.length > 0) {
+      onChange(tags.slice(0, -1))
+    }
+  }
+
+  return (
+    <div
+      className="flex min-h-[48px] flex-wrap items-center gap-2 rounded-2xl border border-[#2a2a30] bg-[#111116] px-3 py-2.5 transition-colors focus-within:border-purple-500/40 cursor-text"
+      onClick={() => inputRef.current?.focus()}
+    >
+      {tags.map((tag) => (
+        <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-purple-500/25 bg-purple-500/15 px-2.5 py-0.5 text-sm text-purple-300">
+          #{tag}
+          <button type="button" onClick={() => onChange(tags.filter((t) => t !== tag))} className="leading-none text-purple-400/60 transition-colors hover:text-purple-200">×</button>
+        </span>
+      ))}
+      <input
+        ref={inputRef}
+        type="text"
+        value={input}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={tags.length === 0 ? 'Type a tag and press space…' : 'Add more…'}
+        className="min-w-[140px] flex-1 bg-transparent text-sm text-white outline-none placeholder-zinc-600"
+      />
+    </div>
+  )
+}
+
 function ImageThumb({
   image,
   alt,
@@ -194,7 +248,7 @@ function buildPrefillForVehicle(vehicle: SavedVehicle | undefined) {
   return {
     title: vehicle ? `${getVehicleLabel(vehicle)} Build` : '',
     description: vehicle?.goals ?? '',
-    tags: '',
+    tags: [] as string[],
     vibe: '',
     status: 'in-progress' as CommunityBuildStatus,
     state: 'published' as CommunityPublishState,
@@ -214,7 +268,7 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
   const [vehicleId, setVehicleId] = useState(initialVehicleId ?? '')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [tags, setTags] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [vibe, setVibe] = useState('')
   const [status, setStatus] = useState<CommunityBuildStatus>('in-progress')
   const [state, setState] = useState<CommunityPublishState>('published')
@@ -227,6 +281,7 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
   const [lockedVehicleId, setLockedVehicleId] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isDraggingPhotos, setIsDraggingPhotos] = useState(false)
   const [photoError, setPhotoError] = useState('')
   const [isImportingPhotos, setIsImportingPhotos] = useState(false)
@@ -257,7 +312,7 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
       setVehicleId(editablePost.vehicleId)
       setTitle(editablePost.title)
       setDescription(editablePost.description)
-      setTags(editablePost.tags.join(', '))
+      setTags(editablePost.tags)
       setVibe(editablePost.vibe)
       setStatus(editablePost.status)
       setState(editablePost.state)
@@ -273,12 +328,35 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
       return
     }
 
+    // Post not in localStorage — try fetching from Supabase
+    if (initialEditSlug) {
+      fetchPublishedBuilds().then((allPosts) => {
+        const remote = allPosts.find((p) => p.slug === initialEditSlug)
+        if (!remote) return
+        setTitle(remote.title)
+        setDescription(remote.description)
+        setTags(remote.tags)
+        setVibe(remote.vibe)
+        setStatus(remote.status)
+        setState(remote.state)
+        setHeroImage(remote.heroImage)
+        setHeroFrame(remote.heroFrame ?? defaultHeroFrame)
+        setGalleryInput(remote.gallery.filter((img) => img !== remote.heroImage).join('\n'))
+        setLinksInput(remote.links.map((link) => `${link.label} | ${link.url}`).join('\n'))
+        setResultSlug(remote.slug)
+        setPostId(remote.id)
+        setLockedVehicleId(remote.vehicleId)
+        setVehicleId(remote.vehicleId)
+      })
+      return
+    }
+
     const existing = getCommunityDraftsForVehicle(vehicleId)[0]
     const fallback = buildPrefillForVehicle(vehicle)
 
     setTitle(existing?.title ?? fallback.title)
     setDescription(existing?.description ?? fallback.description)
-    setTags(existing?.tags.join(', ') ?? fallback.tags)
+    setTags(existing?.tags ?? fallback.tags)
     setVibe(existing?.vibe ?? fallback.vibe)
     setStatus(existing?.status ?? fallback.status)
     setState(existing?.state ?? fallback.state)
@@ -441,6 +519,18 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
     syncImages(allImages.filter((_, imageIndex) => imageIndex !== index))
   }
 
+  async function handleDelete() {
+    if (!postId) {
+      setSubmitError('Post ID not loaded yet — wait a moment and try again.')
+      return
+    }
+    if (!window.confirm('Remove this post from the community? This cannot be undone.')) return
+    setIsDeleting(true)
+    setSubmitError('')
+    await deleteCommunityPost(postId)
+    router.push('/community')
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -484,7 +574,7 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
         vehicleId: submitVehicleId,
         title: trimmedTitle,
         description: trimmedDescription,
-        tags: parseLines(tags),
+        tags: tags,
         vibe: vibe.trim(),
         status,
         state,
@@ -496,9 +586,15 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
 
       const post = upsertCommunityPost(publishInput)
 
-      // Also save to Supabase so other users can see it
+      // Resolve local image refs to data URLs before saving to Supabase
+      // so photos are visible to all users (not just this browser).
       if (selectedVehicle) {
-        publishToSupabase(publishInput, selectedVehicle, 0, post.id, post.slug)
+        const [resolvedHero, ...resolvedGalleryRest] = await Promise.all([
+          resolveLocalImageToDataUrl(persistedHero),
+          ...nextGallery.slice(1).map(resolveLocalImageToDataUrl),
+        ])
+        const supabaseInput = { ...publishInput, heroImage: resolvedHero, gallery: [resolvedHero, ...resolvedGalleryRest] }
+        await publishToSupabase(supabaseInput, selectedVehicle, 0, post.id, post.slug)
       }
 
       setHeroImage(safeHero)
@@ -650,7 +746,7 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-zinc-300">Tags</span>
-                  <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="oem+, stance, street build" className="w-full rounded-2xl border border-[#2a2a30] bg-[#111116] px-4 py-3 text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-purple-500/40" />
+                  <TagChipInput tags={tags} onChange={setTags} />
                 </label>
 
                 <label className="block">
@@ -847,9 +943,14 @@ export default function PublishBuild({ initialVehicleId, initialEditSlug }: { in
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button type="submit" disabled={isSaving} className="rounded-xl bg-purple-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70">{isSaving ? (isEditing ? 'Saving changes…' : 'Saving…') : (isEditing ? 'Save changes' : `Save ${state === 'published' ? '& publish' : 'draft'}`)}</button>
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button type="submit" disabled={isSaving || isDeleting} className="rounded-xl bg-purple-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70">{isSaving ? (isEditing ? 'Saving changes…' : 'Saving…') : (isEditing ? 'Save changes' : `Save ${state === 'published' ? '& publish' : 'draft'}`)}</button>
                 <Link href={resultSlug ? `/community/${resultSlug}` : '/community'} className="rounded-xl border border-[#2a2a30] px-5 py-3 font-medium text-zinc-300 transition-colors hover:border-purple-500/40 hover:text-white">{isEditing ? 'Back to post' : 'Cancel'}</Link>
+                {isEditing && postId && (
+                  <button type="button" onClick={handleDelete} disabled={isDeleting || isSaving} className="ml-auto rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-3 font-medium text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/15 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50">
+                    {isDeleting ? 'Removing…' : 'Remove post'}
+                  </button>
+                )}
               </div>
             </form>
 

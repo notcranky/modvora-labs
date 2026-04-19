@@ -22,21 +22,21 @@ export default function Button({
   disabled,
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center font-medium rounded-xl transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none";
 
   const variants = {
     primary:
-      "bg-purple-600 hover:bg-purple-500 text-white purple-glow-sm",
+      "bg-purple-600 hover:bg-purple-500 active:scale-[0.97] hover:scale-[1.02] text-white shadow-sm shadow-purple-900/30 hover:shadow-purple-800/40",
     outline:
-      "border border-purple-600 text-purple-400 hover:bg-purple-600/10 hover:border-purple-400",
+      "border border-[#2a2a30] text-zinc-300 hover:border-zinc-500 hover:text-white active:scale-[0.97]",
     ghost:
-      "text-zinc-400 hover:text-white hover:bg-white/5",
+      "text-zinc-400 hover:text-white hover:bg-white/5 active:scale-[0.97]",
   };
 
   const sizes = {
-    sm: "text-sm px-4 py-2",
-    md: "text-sm px-5 py-2.5",
-    lg: "text-base px-7 py-3.5",
+    sm: "text-sm px-4 py-2 gap-1.5",
+    md: "text-sm px-5 py-2.5 gap-2",
+    lg: "text-base px-7 py-3.5 gap-2",
   };
 
   const classes = `${base} ${variants[variant]} ${sizes[size]} ${className}`;

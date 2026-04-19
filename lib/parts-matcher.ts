@@ -59,6 +59,15 @@ function scorePart(part: Part, intake: IntakeData): number {
   if (part.tags.includes('must-have')) score += 1
   if (part.tags.includes('budget-friendly') && intake.budget === 'Under $500') score += 2
 
+  // Transmission-aware scoring
+  const txL = (intake.transmission ?? '').toLowerCase()
+  const isManualTx = txL.includes('manual') || txL === 'mt'
+  const isAutoOrDCT = txL === 'automatic' || txL === 'dct' || txL.includes('dual-clutch') || txL.includes('cvt')
+  // Auto/DCT shift points and torque limiters are software-controlled — tune is higher priority
+  if (isAutoOrDCT && (part.category === 'tune' || part.id === 'ecu-tune')) score += 3
+  // Manual cars get extra value from short shifter
+  if (isManualTx && part.id === 'short-shifter') score += 2
+
   return score
 }
 
@@ -66,31 +75,42 @@ export function getRecommendedParts(intake: IntakeData): Part[] {
   const allowedBudgets = mapBudgetToTier(intake.budget)
   const allowedFocus = mapFocus(intake.focus)
 
+  const txLower = (intake.transmission ?? '').toLowerCase()
+  const isManual = txLower.includes('manual') || txLower === 'mt'
+  const isAutomatic = !isManual && txLower !== ''
+
   const filtered = partsDatabase.filter((part) => {
     const budgetMatch = part.budgetTiers.some((t) => allowedBudgets.includes(t))
     const focusMatch = part.focus.some((f) => allowedFocus.includes(f))
+    if (part.requiresTransmission === 'manual' && isAutomatic) return false
+    if (part.requiresTransmission === 'automatic' && isManual) return false
     return budgetMatch && focusMatch
   })
 
   const scored = filtered.map((part) => ({ part, score: scorePart(part, intake) }))
   scored.sort((a, b) => b.score - a.score || a.part.phase - b.part.phase)
-  return scored.map((s) => s.part).slice(0, 12)
+  return scored.map((s) => s.part)
 }
 
 export function getTopRatedParts(intake: IntakeData): { part: Part; score: number; stars: number }[] {
   const allowedBudgets = mapBudgetToTier(intake.budget)
   const allowedFocus = mapFocus(intake.focus)
 
+  const txLower2 = (intake.transmission ?? '').toLowerCase()
+  const isManual2 = txLower2.includes('manual') || txLower2 === 'mt'
+  const isAutomatic2 = !isManual2 && txLower2 !== ''
+
   const filtered = partsDatabase.filter((part) => {
     const budgetMatch = part.budgetTiers.some((t) => allowedBudgets.includes(t))
     const focusMatch = part.focus.some((f) => allowedFocus.includes(f))
+    if (part.requiresTransmission === 'manual' && isAutomatic2) return false
+    if (part.requiresTransmission === 'automatic' && isManual2) return false
     return budgetMatch && focusMatch
   })
 
   const scored = filtered
     .map((part) => ({ part, score: scorePart(part, intake) }))
     .sort((a, b) => b.score - a.score || a.part.phase - b.part.phase)
-    .slice(0, 10)
 
   const maxScore = scored[0]?.score || 1
 

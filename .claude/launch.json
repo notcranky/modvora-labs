@@ -4,7 +4,7 @@
     {
       "name": "modvora-labs",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--hostname", "0.0.0.0"],
       "port": 3000,
       "autoPort": false
     }

@@ -25,12 +25,25 @@ function getGalleryHeroHeightClass(orientation?: 'landscape' | 'portrait') {
 export default function CommunityPostPage({ slug }: { slug: string }) {
   const [post, setPost] = useState<CommunityPostWithVehicle | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const resolvedImageMap = useResolvedImageMap(post ? [post.heroImage, ...post.gallery] : [])
 
   useEffect(() => {
     setPost(getCommunityPostBySlug(slug))
     setLoading(false)
   }, [slug])
+
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    function onKey(e: KeyboardEvent) {
+      if (!post) return
+      if (e.key === 'Escape') setLightboxIndex(null)
+      if (e.key === 'ArrowRight') setLightboxIndex((i) => i !== null ? Math.min(i + 1, post.gallery.length - 1) : null)
+      if (e.key === 'ArrowLeft') setLightboxIndex((i) => i !== null ? Math.max(i - 1, 0) : null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxIndex, post])
 
   if (loading) {
     return (
@@ -136,11 +149,20 @@ export default function CommunityPostPage({ slug }: { slug: string }) {
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {post.gallery.map((image, index) => (
-                <div key={`${image}-${index}`} className={`overflow-hidden rounded-2xl border border-[#23232a] bg-[#111116] ${index === 0 ? 'sm:col-span-2' : ''}`}>
+                <button
+                  key={`${image}-${index}`}
+                  onClick={() => setLightboxIndex(index)}
+                  className={`group overflow-hidden rounded-2xl border border-[#23232a] bg-[#111116] text-left ${index === 0 ? 'sm:col-span-2' : ''}`}
+                >
                   <div className={`relative overflow-hidden ${index === 0 ? getGalleryHeroHeightClass(post.heroFrame?.orientation) : 'h-52'}`}>
-                    <img src={resolvedImageMap[image] || image} alt={`${post.title} photo ${index + 1}`} className="h-full w-full object-cover" style={index === 0 ? getHeroFrameStyle(post.heroFrame) : undefined} />
+                    <img src={resolvedImageMap[image] || image} alt={`${post.title} photo ${index + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" style={index === 0 ? getHeroFrameStyle(post.heroFrame) : undefined} />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                      <svg viewBox="0 0 24 24" className="h-8 w-8 fill-none stroke-white opacity-0 transition-opacity group-hover:opacity-80" strokeWidth={1.5}>
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                      </svg>
+                    </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -199,6 +221,46 @@ export default function CommunityPostPage({ slug }: { slug: string }) {
           </div>
         </section>
       </div>
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && post && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95" onClick={() => setLightboxIndex(null)}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setLightboxIndex(Math.max(lightboxIndex - 1, 0)) }}
+            disabled={lightboxIndex === 0}
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-3 text-white transition-colors hover:bg-black/70 disabled:opacity-20"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth={2}><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+
+          <img
+            src={resolvedImageMap[post.gallery[lightboxIndex]] || post.gallery[lightboxIndex]}
+            alt={`${post.title} photo ${lightboxIndex + 1}`}
+            className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          <button
+            onClick={(e) => { e.stopPropagation(); setLightboxIndex(Math.min(lightboxIndex + 1, post.gallery.length - 1)) }}
+            disabled={lightboxIndex === post.gallery.length - 1}
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-3 text-white transition-colors hover:bg-black/70 disabled:opacity-20"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth={2}><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+
+          <button onClick={() => setLightboxIndex(null)} className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/40 p-2 text-white hover:bg-black/70">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth={2}><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {post.gallery.map((_, i) => (
+              <button key={i} onClick={(e) => { e.stopPropagation(); setLightboxIndex(i) }}
+                className={`h-1.5 rounded-full transition-all ${i === lightboxIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/30'}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

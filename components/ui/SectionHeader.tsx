@@ -12,13 +12,13 @@ export default function SectionHeader({
   centered = true,
 }: SectionHeaderProps) {
   return (
-    <div className={`max-w-2xl ${centered ? "mx-auto text-center" : ""} mb-14`}>
+    <div className={`max-w-2xl ${centered ? "mx-auto text-center" : ""} mb-16`}>
       {eyebrow && (
-        <p className="text-purple-400 text-sm font-medium tracking-widest uppercase mb-3">
+        <p className="text-zinc-600 text-xs font-semibold tracking-[0.2em] uppercase mb-4">
           {eyebrow}
         </p>
       )}
-      <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
+      <h2 className="font-display text-4xl md:text-5xl font-bold text-white leading-[1.08] tracking-tight mb-5">
         {title}
       </h2>
       {subtitle && (

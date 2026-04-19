@@ -13,10 +13,15 @@ export const metadata: Metadata = {
   description:
     'Custom car upgrade plans, performance guidance, and build strategy for your vehicle, your budget, and your goals.',
   keywords: 'car modifications, custom build plans, performance upgrades, automotive tuning, mod planning',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
   openGraph: {
     title: 'Modvora Labs',
     description: 'Smarter Mod Plans for Real Builds',
     type: 'website',
+    images: [{ url: '/favicon-logo.png' }],
   },
 }
 
@@ -33,7 +38,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className="bg-[#0a0a0b] text-[#f4f4f5] antialiased">
         <Navbar initialUser={user} />
-        <main>{children}</main>
+        <main className="pb-28 md:pb-0">{children}</main>
         <Footer />
       </body>
     </html>

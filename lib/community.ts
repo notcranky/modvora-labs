@@ -2,6 +2,24 @@ import { SavedVehicle, getVehicleLabel, loadCheckedParts, loadVehicles } from '.
 import { supabase } from './supabase'
 
 export const COMMUNITY_POSTS_KEY = 'modvora_community_posts'
+const DELETED_POSTS_KEY = 'modvora_deleted_posts'
+
+function getDeletedPostIds(): Set<string> {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(DELETED_POSTS_KEY) : null
+    return new Set(raw ? (JSON.parse(raw) as string[]) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function markPostDeleted(postId: string) {
+  try {
+    const ids = getDeletedPostIds()
+    ids.add(postId)
+    localStorage.setItem(DELETED_POSTS_KEY, JSON.stringify(Array.from(ids)))
+  } catch {}
+}
 
 export type CommunityBuildStatus = 'in-progress' | 'completed'
 export type CommunityPublishState = 'draft' | 'published'
@@ -79,6 +97,7 @@ const sampleVehicles: SavedVehicle[] = [
     budget: '$5k-$10k',
     goals: 'OEM+ street build with better stance, sharper handling, and a more aggressive but still clean look.',
     focus: 'both',
+    transmission: '',
     currentMods: 'Coilovers, cat-back exhaust, tint',
     notes: 'Daily-driven canyon car',
     createdAt: '2026-03-01T10:00:00.000Z',
@@ -99,6 +118,7 @@ const sampleVehicles: SavedVehicle[] = [
     budget: '$10k+',
     goals: 'Fast road / weekend build with confidence on mountain roads and a sharper visual presence.',
     focus: 'performance',
+    transmission: '',
     currentMods: 'Intake, wheels, brake pads',
     notes: 'Weekend-focused',
     createdAt: '2026-02-20T10:00:00.000Z',
@@ -320,7 +340,18 @@ export async function fetchPublishedBuilds(): Promise<CommunityPostWithVehicle[]
     })
 
     const sampleIds = new Set(samples.map((s) => s.id))
-    return [...samples, ...remote.filter((r) => !sampleIds.has(r.id))]
+    const remoteIds = new Set(remote.map((r) => r.id))
+    const deletedIds = getDeletedPostIds()
+
+    // Include localStorage posts not already synced to Supabase (so new posts appear immediately)
+    const localFeed = buildCommunityFeed().filter(
+      (p) => !sampleIds.has(p.id) && !remoteIds.has(p.id),
+    )
+
+    const all = [...samples, ...remote.filter((r) => !sampleIds.has(r.id)), ...localFeed]
+    return all
+      .filter((p) => !deletedIds.has(p.id))
+      .sort((a, b) => new Date(b.publishedAt ?? b.updatedAt).getTime() - new Date(a.publishedAt ?? a.updatedAt).getTime())
   } catch {
     return getSampleCommunityFeed()
   }
@@ -335,14 +366,22 @@ export async function publishToSupabase(
 ): Promise<void> {
   const now = new Date().toISOString()
   try {
-    const { data: existing } = await supabase
+    const heroImage = input.heroImage
+    const gallery = input.gallery.filter((img) => img !== heroImage)
+
+    // Look up existing post by slug first — handles the case where localStorage was
+    // cleared and a new local ID was generated that doesn't match what's in Supabase.
+    const { data: existingBySlug } = await supabase
       .from('community_posts')
-      .select('created_at, published_at')
-      .eq('id', resolvedId)
+      .select('id, created_at, published_at')
+      .eq('slug', resolvedSlug)
       .maybeSingle()
 
+    const upsertId = existingBySlug?.id ?? resolvedId
+    const existing = existingBySlug
+
     await supabase.from('community_posts').upsert({
-      id: resolvedId,
+      id: upsertId,
       slug: resolvedSlug,
       user_email: vehicle.email ?? null,
       vehicle_data: vehicle,
@@ -352,8 +391,8 @@ export async function publishToSupabase(
       vibe: input.vibe,
       status: input.status,
       state: input.state,
-      hero_image: input.heroImage,
-      gallery: input.gallery,
+      hero_image: heroImage,
+      gallery,
       hero_frame: input.heroFrame ?? null,
       links: input.links,
       progress_percent: progressPercent,
@@ -364,6 +403,22 @@ export async function publishToSupabase(
   } catch {
     // silently fail — localStorage version is already saved
   }
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+
+export async function deleteCommunityPost(postId: string): Promise<void> {
+  // Mark deleted locally so it's filtered out even if Supabase delete fails
+  markPostDeleted(postId)
+
+  // Remove from localStorage posts
+  const posts = loadCommunityPosts()
+  saveCommunityPosts(posts.filter((p) => p.id !== postId))
+
+  // Best-effort remove from Supabase (may fail due to RLS — that's ok, blocklist handles it)
+  try {
+    await supabase.from('community_posts').delete().eq('id', postId)
+  } catch {}
 }
 
 // ── localStorage upsert ───────────────────────────────────────────────────────

@@ -2,16 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Syne:wght@700;800;900&display=swap');
 
 :root {
-  --bg-primary: #0a0a0b;
-  --bg-secondary: #111113;
-  --bg-card: #16161a;
-  --border: #2a2a30;
+  --bg-primary: #121212;
+  --bg-secondary: #1a1a1a;
+  --bg-card: #1e1e1e;
+  --border: #2a2a2a;
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
-  --purple: #a855f7;
+  --purple: #A020F0;
   --purple-light: #c084fc;
   --purple-dark: #7e22ce;
 }
@@ -23,52 +23,73 @@
 }
 
 html, body {
-  background-color: #0a0a0b;
+  background-color: #121212;
   color: #f4f4f5;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessibility — consistent focus ring across all interactive elements */
+*:focus-visible {
+  outline: 2px solid rgba(160, 32, 240, 0.65);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 ::selection {
-  background-color: rgba(168, 85, 247, 0.3);
+  background-color: rgba(160, 32, 240, 0.25);
   color: #f4f4f5;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0b;
+  background: #121212;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: #2a2a2a;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a855f7;
+  background: #A020F0;
 }
 
 @layer utilities {
+  /* Display font — Syne for all headings */
+  .font-display {
+    font-family: 'Syne', 'Plus Jakarta Sans', system-ui, sans-serif;
+    letter-spacing: -0.025em;
+  }
+
+  /* Section padding consistency */
+  .section-pad {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+
   .purple-glow {
-    box-shadow: 0 0 30px rgba(168, 85, 247, 0.15), 0 0 60px rgba(168, 85, 247, 0.05);
+    box-shadow: 0 0 30px rgba(160, 32, 240, 0.15), 0 0 60px rgba(160, 32, 240, 0.05);
   }
 
   .purple-glow-sm {
-    box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+    box-shadow: 0 0 15px rgba(160, 32, 240, 0.2);
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, #f4f4f5 0%, #a855f7 60%, #c084fc 100%);
+    background: linear-gradient(135deg, #f4f4f5 0%, #A020F0 60%, #c084fc 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .border-purple-subtle {
-    border: 1px solid rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(160, 32, 240, 0.2);
   }
 
   .card-hover {
@@ -76,8 +97,173 @@ html, body {
   }
 
   .card-hover:hover {
-    border-color: rgba(168, 85, 247, 0.4);
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
+    border-color: rgba(160, 32, 240, 0.35);
+    box-shadow: 0 0 0 1px rgba(160, 32, 240, 0.1), 0 8px 32px rgba(0, 0, 0, 0.35);
     transform: translateY(-2px);
+  }
+
+  /* Skeleton loader — shimmer across a dark surface */
+  @keyframes skeleton-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      #1e1e1e 25%,
+      #2a2a2a 50%,
+      #1e1e1e 75%
+    );
+    background-size: 800px 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+    border-radius: 8px;
+  }
+
+  /* Fade-in — used on page sections and dashboard panels */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in {
+    animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .fade-in-delay-1 { animation: fade-up 0.45s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .fade-in-delay-2 { animation: fade-up 0.45s 0.16s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .fade-in-delay-3 { animation: fade-up 0.45s 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .fade-in-delay-4 { animation: fade-up 0.45s 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Cinematic Show Mode — full-bleed dark overlay */
+  .show-mode-enter {
+    animation: show-mode-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes show-mode-in {
+    from { opacity: 0; transform: scale(0.98); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 15px rgba(160, 32, 240, 0.25); }
+    50% { box-shadow: 0 0 30px rgba(160, 32, 240, 0.5), 0 0 60px rgba(160, 32, 240, 0.15); }
+  }
+
+  .btn-pulse {
+    animation: pulse-glow 2.5s ease-in-out infinite;
+  }
+
+  /* Page turn — pivots from the spine edge for a real book feel.
+     transform-origin is set inline (left/right center) per direction. */
+  @keyframes pageFlipOut {
+    0%   { transform: perspective(2200px) rotateY(0deg);   opacity: 1;   }
+    35%  { transform: perspective(2200px) rotateY(-50deg); opacity: 0.85; }
+    100% { transform: perspective(2200px) rotateY(-90deg); opacity: 0;   }
+  }
+  @keyframes pageFlipIn {
+    0%   { transform: perspective(2200px) rotateY(90deg);  opacity: 0;   }
+    65%  { transform: perspective(2200px) rotateY(18deg);  opacity: 0.85; }
+    100% { transform: perspective(2200px) rotateY(0deg);   opacity: 1;   }
+  }
+  @keyframes pageFlipOutBack {
+    0%   { transform: perspective(2200px) rotateY(0deg);   opacity: 1;   }
+    35%  { transform: perspective(2200px) rotateY(50deg);  opacity: 0.85; }
+    100% { transform: perspective(2200px) rotateY(90deg);  opacity: 0;   }
+  }
+  @keyframes pageFlipInBack {
+    0%   { transform: perspective(2200px) rotateY(-90deg); opacity: 0;   }
+    65%  { transform: perspective(2200px) rotateY(-18deg); opacity: 0.85; }
+    100% { transform: perspective(2200px) rotateY(0deg);   opacity: 1;   }
+  }
+  .page-flip-out      { animation: pageFlipOut     0.35s cubic-bezier(0.55,0,0.85,0.1) forwards; }
+  .page-flip-in       { animation: pageFlipIn      0.35s cubic-bezier(0.15,0.9,0.45,1) forwards; }
+  .page-flip-out-back { animation: pageFlipOutBack 0.35s cubic-bezier(0.55,0,0.85,0.1) forwards; }
+  .page-flip-in-back  { animation: pageFlipInBack  0.35s cubic-bezier(0.15,0.9,0.45,1) forwards; }
+
+  /* ── Scroll-reveal ─────────────────────────────────────────────────────────
+     Elements start invisible and transition in when they enter the viewport.
+     AnimateIn component adds 'visible' class via IntersectionObserver.       */
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+      opacity  0.65s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal.from-left  { transform: translateX(-28px); }
+  .reveal.from-right { transform: translateX(28px); }
+  .reveal.zoom-up    { transform: scale(0.93) translateY(12px); }
+  .reveal.visible    { opacity: 1; transform: none; }
+
+  /* Stagger helpers — applied alongside .reveal */
+  .reveal-d1 { transition-delay: 80ms;  }
+  .reveal-d2 { transition-delay: 160ms; }
+  .reveal-d3 { transition-delay: 240ms; }
+  .reveal-d4 { transition-delay: 320ms; }
+  .reveal-d5 { transition-delay: 400ms; }
+  .reveal-d6 { transition-delay: 480ms; }
+
+  /* ── Tab panel cross-fade ──────────────────────────────────────────────── */
+  @keyframes tab-fade {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+  }
+  .tab-panel {
+    animation: tab-fade 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* ── Smooth accordion expand ───────────────────────────────────────────── */
+  .accordion-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.22s ease;
+    opacity: 0;
+  }
+  .accordion-body.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  .accordion-body > * { overflow: hidden; }
+
+  /* ── Ambient orb float ─────────────────────────────────────────────────── */
+  @keyframes orb-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%       { transform: translate(6px, -10px) scale(1.02); }
+    66%       { transform: translate(-5px, 6px) scale(0.98); }
+  }
+  .orb-float { animation: orb-drift 9s ease-in-out infinite; }
+
+  /* ── Subtle hero text shimmer ──────────────────────────────────────────── */
+  @keyframes shimmer-text {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .text-shimmer {
+    background: linear-gradient(
+      135deg,
+      #f4f4f5 0%,
+      #c084fc 35%,
+      #A020F0 55%,
+      #c084fc 75%,
+      #f4f4f5 100%
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer-text 6s ease-in-out infinite;
+  }
+
+  /* ── Floating bottom-nav entrance ─────────────────────────────────────── */
+  @keyframes nav-slide-up {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .nav-enter {
+    animation: nav-slide-up 0.45s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }

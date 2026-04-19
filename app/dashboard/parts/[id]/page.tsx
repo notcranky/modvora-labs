@@ -268,7 +268,7 @@ export default function PartDetailPage() {
 
   const safeIntake: IntakeData = intake ?? {
     name: '', email: '', service: '', year: '', make: '', model: '', trim: '',
-    engine: '', drivetrain: '', mileage: '', budget: '', goals: '', focus: 'Both',
+    engine: '', drivetrain: '', transmission: '', mileage: '', budget: '', goals: '', focus: 'Both',
     currentMods: '', notes: '',
   }
 

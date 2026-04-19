@@ -22,42 +22,42 @@ export default function ContactForm() {
   };
 
   const inputClass =
-    "w-full bg-[#111113] border border-[#2a2a30] rounded-lg px-4 py-3 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-colors";
+    "w-full bg-[#111113] border border-[#2c2c32] rounded-xl px-4 py-3 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#A020F0]/60 focus:ring-1 focus:ring-[#A020F0]/20 transition-colors";
 
   if (submitted) {
     return (
-      <div className="bg-[#16161a] border border-[#2a2a30] rounded-xl p-10 text-center h-full flex flex-col items-center justify-center">
-        <div className="w-14 h-14 rounded-full bg-purple-600/15 border border-purple-600/25 flex items-center justify-center mx-auto mb-5">
+      <div className="bg-[#1a1a1e] border border-[#2c2c32] rounded-2xl p-10 text-center h-full flex flex-col items-center justify-center min-h-[360px]">
+        <div className="w-14 h-14 rounded-full bg-[#A020F0]/10 border border-[#A020F0]/25 flex items-center justify-center mx-auto mb-5">
           <svg className="w-7 h-7 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-white font-bold text-xl mb-2">Message sent</h3>
-        <p className="text-zinc-500 text-sm">
-          Thanks {form.name}. We&apos;ll reply to <span className="text-purple-400">{form.email}</span> within 1–2 business days.
+        <h3 className="font-display text-white font-bold text-2xl mb-2">Message sent</h3>
+        <p className="text-zinc-500 text-sm leading-relaxed">
+          Thanks {form.name}. We&apos;ll reply to <span className="text-[#A020F0]">{form.email}</span> within 1–2 business days.
         </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-[#16161a] border border-[#2a2a30] rounded-xl p-8 space-y-6">
+    <form onSubmit={handleSubmit} className="bg-[#1a1a1e] border border-[#2c2c32] rounded-2xl p-8 space-y-6">
       <div>
-        <label className="block text-zinc-400 text-sm font-medium mb-1.5">Your Name *</label>
+        <label className="block text-zinc-400 text-xs font-semibold uppercase tracking-[0.12em] mb-1.5">Your Name *</label>
         <input
           name="name" required value={form.name} onChange={handleChange}
           className={inputClass} placeholder="John Doe"
         />
       </div>
       <div>
-        <label className="block text-zinc-400 text-sm font-medium mb-1.5">Email Address *</label>
+        <label className="block text-zinc-400 text-xs font-semibold uppercase tracking-[0.12em] mb-1.5">Email Address *</label>
         <input
           name="email" type="email" required value={form.email} onChange={handleChange}
           className={inputClass} placeholder="you@email.com"
         />
       </div>
       <div>
-        <label className="block text-zinc-400 text-sm font-medium mb-1.5">Message *</label>
+        <label className="block text-zinc-400 text-xs font-semibold uppercase tracking-[0.12em] mb-1.5">Message *</label>
         <textarea
           name="message" required value={form.message} onChange={handleChange}
           rows={6} className={inputClass}

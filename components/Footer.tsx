@@ -11,7 +11,7 @@ const footerLinks = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[#2a2a30] bg-[#0a0a0b] mt-24">
+    <footer className="border-t border-[#2a2a32] bg-[#121212]">
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           {/* Brand */}
@@ -65,13 +65,35 @@ export default function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="pt-8 border-t border-[#2a2a30] flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-zinc-600 text-sm">
-            &copy; {new Date().getFullYear()} Modvora Labs. All rights reserved.
-          </p>
-          <p className="text-zinc-700 text-xs">
-            Built for serious builders.
-          </p>
+        <div className="pt-8 border-t border-[#2a2a30]">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              <p className="text-sm font-medium text-white mb-3">Built for serious builders.</p>
+              <div className="flex flex-col gap-1.5">
+                {[
+                  "Free to start — no credit card required",
+                  "Your data stays yours — export anytime",
+                  "Cancel Premium anytime, no lock-in",
+                ].map((line) => (
+                  <p key={line} className="text-zinc-600 text-xs flex items-center gap-2">
+                    <svg className="h-3 w-3 shrink-0 text-green-500/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
+              <p className="text-zinc-600 text-sm">
+                &copy; {new Date().getFullYear()} Modvora Labs. All rights reserved.
+              </p>
+              <div className="flex items-center gap-4">
+                <Link href="/privacy" className="text-xs text-zinc-700 hover:text-zinc-400 transition-colors">Privacy Policy</Link>
+                <Link href="/terms" className="text-xs text-zinc-700 hover:text-zinc-400 transition-colors">Terms of Service</Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

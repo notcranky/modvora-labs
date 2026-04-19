@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Button from "@/components/ui/Button";
+import AnimateIn from "@/components/ui/AnimateIn";
 
 const faqs = [
   {
@@ -18,7 +19,7 @@ const faqs = [
   },
   {
     q: "What does Premium include?",
-    a: "Premium is the deeper monthly layer. It adds more detailed planner features, richer recommendations, saved build progress, premium tools, and support for extra vehicle slots at $2/month each.",
+    a: "Premium is the deeper monthly layer. It adds more detailed planner features, richer recommendations, saved build progress, premium tools, and support for extra vehicle slots at a one-time $2 per car.",
   },
   {
     q: "Do I need Premium to use Modvora?",
@@ -26,7 +27,7 @@ const faqs = [
   },
   {
     q: "Can I track more than one car?",
-    a: "Yes. Premium includes your main vehicle, and you can add extra car slots for $2/month each if you want to manage more builds in the same account.",
+    a: "Yes. Premium includes your main vehicle, and you can add extra car slots for a one-time $2 per car — no recurring charge.",
   },
   {
     q: "Is expert help still available?",
@@ -38,38 +39,48 @@ const faqs = [
   },
 ];
 
-function FaqItem({ q, a }: { q: string; a: string }) {
+function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div
-      className={`border rounded-xl transition-all duration-150 ${
-        open ? "border-purple-600/30 bg-[#16161a]" : "border-[#2a2a30] bg-[#16161a]"
-      }`}
-    >
-      <button
-        className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
-        onClick={() => setOpen(!open)}
+    <AnimateIn delay={index * 60}>
+      <div
+        className={`border rounded-2xl overflow-hidden transition-all duration-200 ${
+          open
+            ? "border-[#A020F0]/30 bg-[#1a1a1e] shadow-[0_4px_20px_rgba(160,32,240,0.08)]"
+            : "border-[#2c2c32] bg-[#1a1a1e] hover:border-[#A020F0]/20"
+        }`}
       >
-        <span className={`font-medium text-sm md:text-base transition-colors ${open ? "text-white" : "text-zinc-300"}`}>
-          {q}
-        </span>
-        <div className={`flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center transition-all duration-150 ${
-          open ? "border-purple-500 bg-purple-600/15 text-purple-400" : "border-[#3a3a40] text-zinc-500"
-        }`}>
-          <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </button>
+        <button
+          className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+        >
+          <span className={`font-medium text-sm md:text-base transition-colors duration-200 ${open ? "text-white" : "text-zinc-300"}`}>
+            {q}
+          </span>
+          <div className={`flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center transition-all duration-200 ${
+            open
+              ? "border-[#A020F0]/50 bg-[#A020F0]/15 text-purple-400"
+              : "border-[#3a3a40] text-zinc-500"
+          }`}>
+            <svg
+              className={`w-3.5 h-3.5 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
 
-      {open && (
-        <div className="px-6 pb-5">
-          <p className="text-zinc-500 text-sm leading-relaxed">{a}</p>
+        {/* Smooth height animation via CSS grid trick */}
+        <div className={`accordion-body ${open ? "open" : ""}`}>
+          <div>
+            <p className="text-zinc-500 text-sm leading-relaxed px-6 pb-5">{a}</p>
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    </AnimateIn>
   );
 }
 
@@ -77,36 +88,42 @@ export default function FaqPage() {
   return (
     <>
       <section className="pt-32 pb-16 px-6 text-center relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#A020F0]/8 rounded-full blur-[120px] pointer-events-none orb-float" />
         <div className="relative max-w-2xl mx-auto">
-          <p className="text-purple-400 text-sm font-medium tracking-widest uppercase mb-3">FAQ</p>
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-5">
-            Common Questions
-          </h1>
-          <p className="text-zinc-400 text-lg leading-relaxed">
-            Everything you need to know before setting up your build.
-          </p>
+          <AnimateIn>
+            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-4">FAQ</p>
+            <h1 className="font-display text-5xl md:text-6xl font-bold text-white mb-5 leading-tight">
+              Common Questions
+            </h1>
+            <p className="text-zinc-400 text-lg leading-relaxed">
+              Everything you need to know before setting up your build.
+            </p>
+          </AnimateIn>
         </div>
       </section>
 
       <section className="py-12 px-6">
         <div className="max-w-3xl mx-auto space-y-3">
-          {faqs.map((faq) => (
-            <FaqItem key={faq.q} q={faq.q} a={faq.a} />
+          {faqs.map((faq, i) => (
+            <FaqItem key={faq.q} q={faq.q} a={faq.a} index={i} />
           ))}
         </div>
       </section>
 
       <section className="py-20 px-6 text-center">
-        <div className="max-w-lg mx-auto bg-[#16161a] border border-[#2a2a30] rounded-2xl p-10">
-          <h2 className="text-xl font-bold text-white mb-3">Still have questions?</h2>
-          <p className="text-zinc-500 text-sm mb-6">
-            Send us a message and we&apos;ll get back to you before you commit to anything.
-          </p>
-          <div className="flex gap-3 justify-center flex-wrap">
-            <Button href="/contact" variant="primary">Contact Us</Button>
-            <Button href="/intake" variant="outline">Get Started</Button>
-          </div>
+        <div className="max-w-lg mx-auto">
+          <AnimateIn variant="zoom">
+            <div className="bg-[#1a1a1e] border border-[#2c2c32] rounded-2xl p-10">
+              <h2 className="font-display text-xl font-bold text-white mb-3">Still have questions?</h2>
+              <p className="text-zinc-500 text-sm mb-6">
+                Send us a message and we&apos;ll get back to you before you commit to anything.
+              </p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <Button href="/contact" variant="primary">Contact Us</Button>
+                <Button href="/intake" variant="outline">Get Started</Button>
+              </div>
+            </div>
+          </AnimateIn>
         </div>
       </section>
     </>

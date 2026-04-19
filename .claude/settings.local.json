@@ -50,7 +50,25 @@
       "Bash(python3 -c \":*)",
       "Bash(node -e \":*)",
       "Bash(node \"C:/Users/actio/Downloads/build-map.js\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -m pip install pillow -q)",
+      "Bash(grep -r NEXT_PUBLIC_SUPABASE C:Usersactiomod.env*)",
+      "Bash(curl -s \"https://ynwdyrjdrwsoxedgjeab.supabase.co/rest/v1/community_posts?select=id,title,hero_image&order=created_at.desc&limit=3\" -H \"apikey: sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\" -H \"Authorization: Bearer sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\")",
+      "Bash(curl -s -X PATCH \"https://ynwdyrjdrwsoxedgjeab.supabase.co/rest/v1/community_posts?title=eq.2014%20Dodge%20Durango%20Limited%20AWD%20Build\" -H \"apikey: sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\" -H \"Authorization: Bearer sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\" -H \"Content-Type: application/json\" -d '{\"\"hero_image\"\":\"\"test\"\"}' -w \"\\\\nHTTP_STATUS:%{http_code}\")",
+      "Bash(curl -s \"https://ynwdyrjdrwsoxedgjeab.supabase.co/rest/v1/community_posts?select=id,title,hero_image,updated_at&order=updated_at.desc&limit=3\" -H \"apikey: sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\" -H \"Authorization: Bearer sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\")",
+      "Bash(curl -s \"https://ynwdyrjdrwsoxedgjeab.supabase.co/rest/v1/community_posts?select=id,title,hero_image,updated_at&order=updated_at.desc\" -H \"apikey: sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\" -H \"Authorization: Bearer sb_publishable_24L49Guehq0xcuakT6Vz4g_b3nc-brB\")",
+      "Bash(node -e \"require\\(''qrcode.react''\\)\")",
+      "Bash(node -e \"const q = require\\(''qrcode.react''\\); console.log\\(Object.keys\\(q\\)\\)\")",
+      "Bash(npx kill-port:*)",
+      "Bash(npx vercel:*)",
+      "Bash(ipconfig)",
+      "Bash(netsh advfirewall:*)",
+      "Bash(ngrok version:*)",
+      "Bash(ngrok config:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)"
     ]
   }
 }

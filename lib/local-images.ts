@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const DB_NAME = 'modvora-local-images'
 const STORE_NAME = 'images'
@@ -167,18 +167,80 @@ export async function migrateDataUrlToLocalImage(dataUrl: string, options?: { fi
   })
 }
 
+export async function uploadLocalImageToStorage(
+  ref: string,
+  uploadFn: (blob: Blob, mimeType: string, id: string) => Promise<string | null>,
+): Promise<string | null> {
+  if (!isLocalImageRef(ref)) return ref
+  try {
+    const record = await getLocalImageRecord(ref)
+    if (!record) return null
+    return await uploadFn(record.blob, record.mimeType, record.id)
+  } catch {
+    return null
+  }
+}
+
+// Compress a local image ref to a small JPEG data URL suitable for storing in Supabase.
+// Targets < 400 KB to stay well within REST API limits.
+export async function resolveLocalImageToDataUrl(ref: string): Promise<string> {
+  if (!isLocalImageRef(ref)) return ref
+  try {
+    const record = await getLocalImageRecord(ref)
+    if (!record) return ref
+
+    return await new Promise<string>((resolve) => {
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(record.blob)
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl)
+        const maxDim = 1200
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height, 1))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { resolve(ref); return }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+        // Reduce quality until data URL is under ~400 KB (base64 is ~1.37x raw)
+        const maxBytes = 400 * 1024 * 1.37
+        let quality = 0.82
+        let dataUrl = canvas.toDataURL('image/jpeg', quality)
+        while (dataUrl.length > maxBytes && quality > 0.25) {
+          quality -= 0.08
+          dataUrl = canvas.toDataURL('image/jpeg', quality)
+        }
+        resolve(dataUrl)
+      }
+
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(ref) }
+      img.src = objectUrl
+    })
+  } catch {
+    return ref
+  }
+}
+
 export function useResolvedImageMap(images: string[]) {
-  const stableImages = useMemo(() => Array.from(new Set(images.filter(Boolean))), [images])
+  // Use a primitive string as dep so React compares by value, not reference
+  const key = images.filter(Boolean).sort().join('\0')
   const [resolved, setResolved] = useState<Record<string, string>>({})
+  const lastKeyRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
+    // Guard against concurrent-mode re-runs with same key
+    if (key === lastKeyRef.current) return
+
     let cancelled = false
     const objectUrls: string[] = []
+    const imageList = Array.from(new Set(images.filter(Boolean)))
 
     async function resolveImages() {
       const next: Record<string, string> = {}
 
-      for (const image of stableImages) {
+      for (const image of imageList) {
         if (!image) continue
 
         if (!isLocalImageRef(image)) {
@@ -197,7 +259,10 @@ export function useResolvedImageMap(images: string[]) {
         }
       }
 
-      if (!cancelled) setResolved(next)
+      if (!cancelled) {
+        lastKeyRef.current = key
+        setResolved(next)
+      }
     }
 
     void resolveImages()
@@ -206,7 +271,8 @@ export function useResolvedImageMap(images: string[]) {
       cancelled = true
       objectUrls.forEach((url) => URL.revokeObjectURL(url))
     }
-  }, [stableImages])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
 
   return resolved
 }
