@@ -54,22 +54,22 @@ const whyCards = [
 
 const testimonials = [
   {
-    quote: "Finally stopped using a Notes app to track my build. Everything is in one place and I actually know where my money went.",
-    name: "Marcus T.",
-    build: "2019 Subaru STI — Stage 2",
-    initials: "MT",
+    quote: "Finally replaced my spreadsheet. Everything's in one place — parts, costs, what's installed, what's next. Took me like 10 minutes to set up.",
+    name: "Jake S.",
+    build: "2003 Nissan 350Z",
+    initials: "JS",
   },
   {
-    quote: "The budget tracker made me realize I was about to overspend on parts I didn't need yet. Saved me probably $600.",
+    quote: "Helps me remember what I actually bought last year. Ordered the same coilovers twice before I started logging stuff.",
     name: "Dani K.",
     build: "FD RX-7 project",
     initials: "DK",
   },
   {
-    quote: "Seeing other people document their builds properly made me want to start mine. The community feed is genuinely addictive.",
-    name: "Alex R.",
-    build: "E36 M3 daily driver",
-    initials: "AR",
+    quote: "Saw someone post their Durango build on here and it made me want to actually finish mine instead of just talking about it.",
+    name: "Chris L.",
+    build: "2015 Dodge Durango R/T",
+    initials: "CL",
   },
 ];
 
@@ -119,7 +119,13 @@ const processSteps = [
   },
 ];
 
-const avatarSeeds = ["MT", "DK", "AR", "JS", "CL"];
+const recentBuilders = [
+  { initials: "JF", color: "bg-purple-600" },
+  { initials: "DK", color: "bg-blue-600" },
+  { initials: "JS", color: "bg-green-700" },
+  { initials: "CL", color: "bg-orange-600" },
+  { initials: "AR", color: "bg-rose-600" },
+];
 
 const staggerDelays = [0, 100, 200, 300, 400, 500];
 
@@ -159,18 +165,18 @@ export default function HomePage() {
               {/* Social proof */}
               <div className="flex items-center gap-3 justify-center lg:justify-start mb-8">
                 <div className="flex -space-x-2">
-                  {avatarSeeds.map((seed, idx) => (
+                  {recentBuilders.map((b, idx) => (
                     <div
-                      key={seed}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#121212] bg-gradient-to-br from-purple-700 to-purple-900 text-[9px] font-bold text-white"
+                      key={b.initials}
+                      className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#121212] ${b.color} text-[9px] font-bold text-white`}
                       style={{ zIndex: 5 - idx }}
                     >
-                      {seed}
+                      {b.initials}
                     </div>
                   ))}
                 </div>
                 <p className="text-sm text-zinc-400">
-                  <span className="font-semibold text-white">2,400+</span> builders already tracking their builds
+                  <span className="font-semibold text-white">Real builders</span> tracking their builds here
                 </p>
               </div>
 
@@ -440,7 +446,7 @@ export default function HomePage() {
                   Your build deserves a better home than a Notes app.
                 </h2>
                 <p className="text-zinc-400 mb-10 max-w-xl mx-auto leading-relaxed text-lg">
-                  Join 2,400+ builders who track every mod, plan every stage, and never lose the thread of their project.
+                  Join builders who track every mod, plan every stage, and never lose the thread of their project.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center mb-5">
                   <Button href="/intake" size="lg" className="btn-pulse">

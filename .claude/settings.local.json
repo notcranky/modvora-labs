@@ -68,7 +68,8 @@
       "Bash(ngrok version:*)",
       "Bash(ngrok config:*)",
       "Bash(git remote:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -310,7 +310,10 @@ export async function fetchPublishedBuilds(): Promise<CommunityPostWithVehicle[]
       .order('published_at', { ascending: false })
 
     const samples = getSampleCommunityFeed()
-    if (error || !data) return samples
+    if (error || !data) {
+      const localFeed = buildCommunityFeed().filter((p) => !new Set(samples.map((s) => s.id)).has(p.id))
+      return [...samples, ...localFeed].filter((p) => !getDeletedPostIds().has(p.id))
+    }
 
     const remote: CommunityPostWithVehicle[] = data.map((row) => {
       const vehicle = row.vehicle_data as SavedVehicle

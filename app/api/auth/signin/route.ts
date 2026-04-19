@@ -46,6 +46,20 @@ export async function POST(req: NextRequest) {
       return res
     }
 
+    // ── Demo / guest bypass ──────────────────────────────────────────────────
+    if (normalizedEmail === 'demo@modvora.com' && password.trim() === 'demo') {
+      const token = await createSession({ email: 'demo@modvora.com', name: 'Demo User', role: 'customer' })
+      const res = NextResponse.json({ success: true, role: 'customer', demo: true })
+      res.cookies.set(COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24, // 1 day
+        path: '/',
+      })
+      return res
+    }
+
     // ── Customer check (paid users stored in env as comma-separated emails) ──
     const paidEmails = (process.env.PAID_EMAILS ?? '')
       .split(',')

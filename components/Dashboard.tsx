@@ -1302,7 +1302,7 @@ export default function Dashboard() {
     'modvora_checked_parts_by_vehicle', 'modvora_product_selections_by_vehicle',
     'modvora_build_tracker_by_vehicle', 'modvora_build_milestones_by_vehicle',
     'modvora_build_photos_by_vehicle', 'modvora_part_photos_by_vehicle',
-    'modvora_build_journal_by_vehicle',
+    'modvora_build_journal_by_vehicle', 'modvora_community_posts',
   ]
 
   function collectLocalData(): Record<string, string> {
