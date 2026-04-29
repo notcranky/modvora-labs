@@ -3,13 +3,15 @@
 import Link from 'next/link'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle, loadCommunityPosts } from '@/lib/community'
-import { getPostAuthorUsername, getPostAuthorHandle } from '@/lib/profiles'
+import { getPostAuthorUsername, getPostAuthorHandle, isFollowing, toggleFollow, getFollowedUsernames } from '@/lib/profiles'
 import NotificationBell from '@/components/NotificationBell'
 import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
 import { useResolvedImageMap } from '@/lib/local-images'
 import { loadVehicles } from '@/lib/garage'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getBuilderXP, getLevel, getProgressToNextLevel, getLevelColorClasses, BuilderLevel } from '@/lib/builder-levels'
+import { getBuildOfWeek, isBuildOfWeek, getBotWBadge, BuildOfWeek } from '@/lib/build-of-week'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,6 +149,103 @@ function DoubleTapHeart({ show, x, y }: { show: boolean; x: number; y: number })
         </motion.div>
       )}
     </AnimatePresence>
+  )
+}
+
+// ── Build of the Week Banner ─────────────────────────────────────────────────
+
+function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: { 
+  posts: CommunityPostWithVehicle[]; 
+  resolvedImageMap: Record<string, string>;
+  likeCounts: Record<string, number>;
+}) {
+  const current = getBuildOfWeek()
+  if (!current) return null
+  
+  const post = posts.find(p => p.id === current.buildId)
+  if (!post) return null
+  
+  const resolvedImage = resolvedImageMap[post.heroImage] || post.heroImage
+  const initials = post.vehicle.name?.slice(0, 2).toUpperCase() || '??'
+  const authorHandle = getPostAuthorHandle(post)
+  const authorUsername = getPostAuthorUsername(post)
+  
+  return (
+    <div className="max-w-7xl mx-auto px-4 pb-6">
+      <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-2xl border border-amber-500/30 overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          {/* Image */}
+          <div className="md:w-2/5 relative">
+            <div className="aspect-video md:aspect-auto md:h-full">
+              {resolvedImage ? (
+                <img src={resolvedImage} alt={post.title} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full bg-[#0a0a0e] flex items-center justify-center">
+                  <span className="text-4xl">🏎️</span>
+                </div>
+              )}
+            </div>
+            <div className="absolute top-3 left-3 flex items-center gap-2">
+              <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-black text-xs font-bold">
+                👑 Build of the Week
+              </span>
+            </div>
+          </div>
+          
+          {/* Info */}
+          <div className="md:w-3/5 p-5 md:p-6 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-xs font-bold text-black">
+                  {initials}
+                </div>
+                <div>
+                  <Link href={`/community/profile/${authorUsername}`} className="text-sm font-semibold text-white hover:text-amber-400 transition-colors">
+                    {authorHandle}
+                  </Link>
+                </div>
+                <span className="text-xs text-amber-500/80">🏆 +100 XP</span>
+              </div>
+              
+              <h3 className="text-xl font-bold text-white mb-2">{post.title}</h3>
+              <p className="text-zinc-400 text-sm mb-4">{current.reason}</p>
+              
+              <div className="flex items-center gap-4 text-sm text-zinc-500 mb-4">
+                <span className="flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-red-500" strokeWidth={0}>
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
+                  {likeCounts[post.id] ?? current.stats.likes}
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  {current.stats.comments}
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  {current.stats.views.toLocaleString()}
+                </span>
+              </div>
+            </div>
+            
+            <Link 
+              href={`/community/${post.slug}`}
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-semibold py-2.5 px-6 rounded-xl transition-all"
+            >
+              View Build
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}>
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -499,8 +598,26 @@ function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagC
   const [copied, setCopied] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
   const [heartPos, setHeartPos] = useState({ x: 0, y: 0 })
+  const [following, setFollowing] = useState(false)
   const lastTapRef = useRef(0)
   const imageRef = useRef<HTMLDivElement>(null)
+
+  const authorUsername = getPostAuthorUsername(post)
+  const authorHandle = getPostAuthorHandle(post)
+  
+  // Get builder level
+  const builderXP = getBuilderXP(authorHandle)
+  const builderLevel = getLevel(builderXP.total)
+  const botw = isBuildOfWeek(post.id)
+
+  useEffect(() => {
+    setFollowing(isFollowing(authorUsername))
+  }, [authorUsername])
+
+  function handleFollow() {
+    const nowFollowing = toggleFollow(authorUsername)
+    setFollowing(nowFollowing)
+  }
 
   function handleShare() {
     const url = `${window.location.origin}/community/${post.slug}`
@@ -540,21 +657,44 @@ function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagC
   return (
     <>
       <article className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden hover:border-[#2a2a35] transition-colors">
-        {/* Card Header */}
+        {/* Card Header with Builder Level */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
           <Link 
-            href={`/community/profile/${getPostAuthorUsername(post)}`} 
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-purple-900 text-xs font-semibold text-white hover:opacity-80 transition-opacity"
+            href={`/community/profile/${authorUsername}`} 
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-purple-900 text-xs font-semibold text-white hover:opacity-80 transition-opacity"
           >
             {initials}
+            {/* Build of the Week crown */}
+            {botw && (
+              <span className="absolute -top-0.5 -right-0.5 text-[10px]" title="Build of the Week">👑</span>
+            )}
           </Link>
           <div className="min-w-0 flex-1">
-            <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="text-sm font-semibold text-white hover:text-purple-400 transition-colors truncate block">
-              {getPostAuthorHandle(post)}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={`/community/profile/${authorUsername}`} className="text-sm font-semibold text-white hover:text-purple-400 transition-colors truncate">
+                {authorHandle}
+              </Link>
+              {/* Builder Level Badge */}
+              <span 
+                className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getLevelColorClasses(builderLevel.color)}`}
+                title={`${builderLevel.name} • Level ${builderLevel.level} • ${builderXP.total} XP`}
+              >
+                {builderLevel.badge} L{builderLevel.level}
+              </span>
+            </div>
             <p className="text-xs text-zinc-600 truncate">{post.vehicleLabel}</p>
           </div>
-          <span className="text-xs text-zinc-600 flex-shrink-0">{timeAgo(post.publishedAt ?? post.updatedAt)}</span>
+          {/* Follow Button */}
+          <button
+            onClick={handleFollow}
+            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              following 
+                ? 'bg-[#2a2a35] text-white hover:bg-[#3a3a45]' 
+                : 'bg-purple-600 text-white hover:bg-purple-500'
+            }`}
+          >
+            {following ? 'Following' : '+ Follow'}
+          </button>
         </div>
 
         {/* Photo Container - Auto-scales to fit */}
@@ -755,6 +895,7 @@ export default function CommunityGallery() {
   const [ownedPostIds, setOwnedPostIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'newest' | 'liked'>('newest')
+  const [feedFilter, setFeedFilter] = useState<'all' | 'following'>('all')
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -800,6 +941,13 @@ export default function CommunityGallery() {
 
   const filteredPosts = useMemo(() => {
     let result = [...posts]
+    
+    // Following filter
+    if (feedFilter === 'following') {
+      const followed = getFollowedUsernames()
+      result = result.filter((p) => followed.has(getPostAuthorUsername(p)))
+    }
+    
     if (filterTag) result = result.filter((p) => p.tags.includes(filterTag))
     if (search.trim()) {
       const q = search.trim().toLowerCase()
@@ -812,7 +960,7 @@ export default function CommunityGallery() {
     }
     if (sortBy === 'liked') result.sort((a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0))
     return result
-  }, [posts, filterTag, search, sortBy, likeCounts])
+  }, [posts, filterTag, search, sortBy, likeCounts, feedFilter])
 
   const heroImages = useMemo(() => filteredPosts.map((post) => post.heroImage), [filteredPosts])
   const resolvedImageMap = useResolvedImageMap(heroImages)
@@ -946,6 +1094,18 @@ export default function CommunityGallery() {
           
           <div className="flex gap-2 flex-wrap">
             <button
+              onClick={() => setFeedFilter('all')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${feedFilter === 'all' ? 'bg-white text-black' : 'bg-[#18181f] text-zinc-400 hover:text-white border border-[#2a2a35]'}`}
+            >
+              All Builds
+            </button>
+            <button
+              onClick={() => setFeedFilter('following')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${feedFilter === 'following' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#18181f] text-zinc-400 hover:text-white border border-[#2a2a35]'}`}
+            >
+              Following
+            </button>
+            <button
               onClick={() => setSortBy('newest')}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${sortBy === 'newest' ? 'bg-white text-black' : 'bg-[#18181f] text-zinc-400 hover:text-white border border-[#2a2a35]'}`}
             >
@@ -969,6 +1129,9 @@ export default function CommunityGallery() {
           </div>
         </div>
       </div>
+
+      {/* Build of the Week Banner */}
+      {!loading && !search && !filterTag && feedFilter === 'all' && <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} />}
 
       {/* Responsive Feed Grid */}
       <div className="px-4 pb-8 max-w-7xl mx-auto">
