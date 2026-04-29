@@ -665,6 +665,7 @@ export default function CommunityGallery() {
       
       // Load verified users (works for both logged in and anonymous)
       const verified = await getVerifiedUsers()
+      console.log('[CommunityGallery] Loaded verified users:', verified.length, verified.map(p => ({ handle: p.handle, username: p.username, verified: p.verified, type: p.verified_type })))
       const verifiedSet = new Set<string>()
       const verifiedMap = new Map<string, ProfileWithVerification>()
       verified.forEach(profile => {
@@ -680,6 +681,7 @@ export default function CommunityGallery() {
         verifiedMap.set(profile.handle, profile)
         verifiedMap.set(profile.username, profile)
       })
+      console.log('[CommunityGallery] Verified set:', Array.from(verifiedSet))
       setVerifiedUsers(verifiedSet)
       setVerifiedProfiles(verifiedMap)
       
@@ -935,6 +937,9 @@ export default function CommunityGallery() {
                 const authorName = post.vehicle.name || 'unknown'
                 const authorKey = toHandle(authorName)
                 const profile = verifiedProfiles.get(authorKey)
+                const isVerified = verifiedUsers.has(authorKey)
+                // Debug: always log author info
+                console.log(`[CommunityGallery] Post: ${post.title}, Author: ${authorName}, Key: ${authorKey}, Verified: ${isVerified}, Profile: ${profile ? 'found' : 'not found'}`)
                 return (
                   <PostCard
                     key={post.id}

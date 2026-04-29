@@ -126,7 +126,12 @@ export async function isVerified(userId: string): Promise<boolean> {
 }
 
 export async function getVerifiedUsers(): Promise<ProfileWithVerification[]> {
-  if (!supabaseEnabled) return []
+  if (!supabaseEnabled) {
+    console.log('[verification] Supabase not enabled')
+    return []
+  }
+  
+  console.log('[verification] Fetching verified users from verified_users view')
   
   const { data, error } = await supabase
     .from('verified_users')
@@ -135,9 +140,24 @@ export async function getVerifiedUsers(): Promise<ProfileWithVerification[]> {
     .order('follower_count', { ascending: false })
   
   if (error) {
-    console.error('Error fetching verified users:', error)
-    return []
+    console.error('[verification] Error fetching verified users:', error)
+    // Fallback: query profiles directly
+    console.log('[verification] Trying fallback query on profiles table')
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('verified', true)
+    
+    if (fallbackError) {
+      console.error('[verification] Fallback also failed:', fallbackError)
+      return []
+    }
+    
+    console.log('[verification] Fallback succeeded, found:', fallbackData?.length || 0, fallbackData)
+    return (fallbackData as ProfileWithVerification[]) ?? []
   }
+  
+  console.log('[verification] Found verified users:', data?.length || 0, data)
   return (data as ProfileWithVerification[]) ?? []
 }
 
