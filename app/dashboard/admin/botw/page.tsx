@@ -6,6 +6,44 @@ import { fetchPublishedBuilds, CommunityPostWithVehicle } from '@/lib/community'
 import { getBuildOfWeek, getBuildOfWeekHistory, selectBuildOfWeek, BuildOfWeek, formatWeekDisplay, Nomination, getTopNominees, getNominations, resetNominationsForWeek } from '@/lib/build-of-week'
 import { getPostAuthorHandle } from '@/lib/profiles'
 
+const LIKE_COUNTS_KEY = 'modvora_like_counts'
+const COMMENTS_KEY = 'modvora_comments'
+
+function safeRead<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch { return fallback }
+}
+
+interface PostStats {
+  likes: number
+  comments: number
+  views: number
+}
+
+function getPostStats(postId: string): PostStats {
+  const likeCounts = safeRead<Record<string, number>>(LIKE_COUNTS_KEY, {})
+  const allComments = safeRead<Record<string, unknown[]>>(COMMENTS_KEY, {})
+  const postComments = allComments[postId] || []
+  
+  // Count total comments including replies
+  let totalComments = 0
+  for (const c of postComments) {
+    totalComments++
+    if (typeof c === 'object' && c && 'replies' in c && Array.isArray((c as {replies?: unknown[]}).replies)) {
+      totalComments += ((c as {replies: unknown[]}).replies).length
+    }
+  }
+  
+  // Views are estimated based on engagement (likes * 10-15)
+  const likes = likeCounts[postId] ?? 0
+  const views = Math.max(likes * 12, 100) // Minimum 100 views
+  
+  return { likes, comments: totalComments, views }
+}
+
 export default function BuildOfWeekAdmin() {
   const [posts, setPosts] = useState<CommunityPostWithVehicle[]>([])
   const [current, setCurrent] = useState<BuildOfWeek | null>(null)
@@ -16,6 +54,7 @@ export default function BuildOfWeekAdmin() {
   const [saving, setSaving] = useState(false)
   const [nominees, setNominees] = useState<Nomination[]>([])
   const [showNominees, setShowNominees] = useState(true)
+  const [postStats, setPostStats] = useState<Record<string, PostStats>>({})
 
   function loadData() {
     fetchPublishedBuilds().then((fetched) => {
@@ -23,6 +62,14 @@ export default function BuildOfWeekAdmin() {
       setCurrent(getBuildOfWeek())
       setHistory(getBuildOfWeekHistory().slice(0, 5))
       setNominees(getTopNominees(10))
+      
+      // Load stats for all posts
+      const stats: Record<string, PostStats> = {}
+      for (const post of fetched) {
+        stats[post.id] = getPostStats(post.id)
+      }
+      setPostStats(stats)
+      
       setLoading(false)
     })
   }
@@ -40,7 +87,10 @@ export default function BuildOfWeekAdmin() {
     if (!selectedPost || !reason.trim()) return
     setSaving(true)
     
-    const botw = selectBuildOfWeek(selectedPost, reason.trim(), 'admin')
+    // Get real stats for the selected post
+    const stats = postStats[selectedPost.id] || { likes: 0, comments: 0, views: 0 }
+    
+    const botw = selectBuildOfWeek(selectedPost, reason.trim(), 'admin', stats)
     
     // Reset nominations for next week
     resetNominationsForWeek()
@@ -184,10 +234,19 @@ export default function BuildOfWeekAdmin() {
           {selectedPost ? (
             <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6 space-y-4">
               <div className="flex items-start gap-4">
-                <div className="w-20 h-20 rounded-xl bg-[#1e1e24] flex-shrink-0" />
-                <div>
+                <div className="w-20 h-20 rounded-xl bg-[#1e1e24] flex-shrink-0 overflow-hidden">
+                  {selectedPost.heroImage && (
+                    <img src={selectedPost.heroImage} alt={selectedPost.title} className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-white">{selectedPost.title}</h3>
                   <p className="text-zinc-500 text-sm">{getPostAuthorHandle(selectedPost)} • {selectedPost.vehicleLabel}</p>
+                  <div className="flex items-center gap-4 mt-2 text-sm">
+                    <span className="text-red-400">❤️ {postStats[selectedPost.id]?.likes ?? 0} likes</span>
+                    <span className="text-blue-400">💬 {postStats[selectedPost.id]?.comments ?? 0} comments</span>
+                    <span className="text-green-400">👁️ {postStats[selectedPost.id]?.views ?? 0} views</span>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setSelectedPost(null)}
@@ -244,6 +303,11 @@ export default function BuildOfWeekAdmin() {
                       <h3 className="font-medium text-white truncate">{post.title}</h3>
                       <p className="text-xs text-zinc-500 truncate">{getPostAuthorHandle(post)}</p>
                       <p className="text-xs text-zinc-600 mt-1">{post.vehicleLabel}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs">
+                        <span className="text-zinc-500">❤️ {postStats[post.id]?.likes ?? 0}</span>
+                        <span className="text-zinc-500">💬 {postStats[post.id]?.comments ?? 0}</span>
+                        <span className="text-zinc-500">👁️ {postStats[post.id]?.views ?? 0}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2 mt-4">

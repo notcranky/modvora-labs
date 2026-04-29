@@ -104,7 +104,8 @@ export function getBuildOfWeekHistory(): BuildOfWeek[] {
 export function selectBuildOfWeek(
   post: CommunityPostWithVehicle,
   reason: string,
-  moderator: string
+  moderator: string,
+  stats?: { likes: number; comments: number; views: number }
 ): BuildOfWeek {
   const weekId = getCurrentWeekId()
   
@@ -117,10 +118,10 @@ export function selectBuildOfWeek(
     handle: post.vehicle.name?.toLowerCase().replace(/\s+/g, '_') || 'unknown',
     featuredAt: new Date().toISOString(),
     reason,
-    stats: {
-      likes: Math.floor(Math.random() * 50) + 150,  // Mock stats
-      comments: Math.floor(Math.random() * 20) + 10,
-      views: Math.floor(Math.random() * 1000) + 2000,
+    stats: stats || {
+      likes: 0,
+      comments: 0,
+      views: 0,
     },
   }
   

@@ -1811,7 +1811,6 @@ export default function Dashboard() {
               )}
               <a href={`/dashboard/publish?vehicle=${intake.id}`} className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-500">Publish build</a>
               <a href="/community" className="rounded-xl border border-[#2a2a30] px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-purple-500/40 hover:text-white">View community</a>
-              <a href="/dashboard/admin/botw" className="rounded-xl border border-amber-500/30 px-4 py-2 text-sm font-medium text-amber-300 transition-colors hover:border-amber-500/60 hover:text-white">🏆 BOTW</a>
               <a href={`/intake?vehicle=${intake.id}`} className="rounded-xl border border-[#2a2a30] px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-purple-500/40 hover:text-white">Edit vehicle</a>
             </div>
           </div>
