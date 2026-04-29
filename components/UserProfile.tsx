@@ -44,42 +44,28 @@ export default function UserProfile({ username }: UserProfileProps) {
       
       // Load verification status
       const verifiedUsers = await getVerifiedUsers()
-      console.log('[UserProfile] Loaded verified users:', verifiedUsers.length)
-      console.log('[UserProfile] Looking for username:', username, 'handle:', toHandle(username))
-      const userProfile = verifiedUsers.find(p => {
-        const match = toHandle(p.handle) === toHandle(username) || toHandle(p.username) === toHandle(username)
-        console.log(`[UserProfile] Checking: ${p.handle} (${toHandle(p.handle)}) vs ${username} (${toHandle(username)}) = ${match}`)
-        return match
-      })
-      console.log('[UserProfile] Found profile:', userProfile)
+      const userProfile = verifiedUsers.find(p => 
+        toHandle(p.handle) === toHandle(username) || toHandle(p.username) === toHandle(username)
+      )
       
-      // Check if owner
+      // Check if owner (always verified)
       const isOwner = isOwnerHandle(username) || isOwnerHandle(displayName)
-      console.log('[UserProfile] Is owner check:', username, displayName, 'isOwner:', isOwner)
       
       if (isOwner) {
-        // Owner is always verified
         setVerificationStatus({
           isVerified: true,
           badgeColor: 'gold',
           tooltip: 'Modvora Admin',
           canExpire: false
         })
-        console.log('[UserProfile] Set owner verification status')
       } else if (!userProfile) {
         // Try direct lookup if not found in list
-        console.log('[UserProfile] Not found in list, trying direct lookup')
         const directProfile = await getVerifiedStatusByHandle(username)
-        console.log('[UserProfile] Direct lookup result:', directProfile)
         if (directProfile) {
-          const status = getVerificationStatus(directProfile)
-          console.log('[UserProfile] Setting verification status from direct:', status)
-          setVerificationStatus(status)
+          setVerificationStatus(getVerificationStatus(directProfile))
         }
       } else {
-        const status = getVerificationStatus(userProfile)
-        console.log('[UserProfile] Setting verification status:', status)
-        setVerificationStatus(status)
+        setVerificationStatus(getVerificationStatus(userProfile))
       }
       
       setLoaded(true)

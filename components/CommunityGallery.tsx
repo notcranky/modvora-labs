@@ -276,10 +276,6 @@ interface PostCardProps {
 
 function PostCard(props: PostCardProps) {
   const { post, resolvedImage, liked, saved, likeCount, comments, defaultAuthor, isOwner, isVerified, verifiedType, earlySupporter, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
-  
-  // Debug: log badge props
-  console.log(`[PostCard] ${post.title}: isVerified=${isVerified}, verifiedType=${verifiedType}`)
-  
   const [showComments, setShowComments] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
@@ -669,11 +665,9 @@ export default function CommunityGallery() {
       
       // Load verified users (works for both logged in and anonymous)
       const verified = await getVerifiedUsers()
-      console.log('[CommunityGallery] Loaded verified users:', verified.length, verified.map(p => ({ handle: p.handle, username: p.username, verified: p.verified, type: p.verified_type })))
       const verifiedSet = new Set<string>()
       const verifiedMap = new Map<string, ProfileWithVerification>()
       verified.forEach(profile => {
-        // Use both handle formats for matching (posts use slugify, profiles use toHandle)
         const normalizedHandle = toHandle(profile.handle)
         const normalizedUsername = toHandle(profile.username)
         verifiedSet.add(normalizedHandle)
@@ -685,16 +679,13 @@ export default function CommunityGallery() {
         verifiedMap.set(profile.handle, profile)
         verifiedMap.set(profile.username, profile)
       })
-      console.log('[CommunityGallery] Verified set:', Array.from(verifiedSet))
       
       // Fallback: Direct check for each author if set is empty
       if (verifiedSet.size === 0 && fetched.length > 0) {
-        console.log('[CommunityGallery] No verified users in list, checking authors directly')
         const uniqueAuthors = [...new Set(fetched.map(p => toHandle(p.vehicle.name || 'unknown')))]
         for (const author of uniqueAuthors) {
           const directProfile = await getVerifiedStatusByHandle(author)
           if (directProfile) {
-            console.log('[CommunityGallery] Found verified via direct check:', author)
             verifiedSet.add(author)
             verifiedMap.set(author, directProfile)
           }
@@ -959,8 +950,6 @@ export default function CommunityGallery() {
                 const isInVerifiedList = verifiedUsers.has(authorKey)
                 const isOwner = isOwnerHandle(authorName) || isOwnerHandle(authorKey)
                 const isVerified = isInVerifiedList || isOwner
-                // Debug: always log author info
-                console.log(`[CommunityGallery] Post: ${post.title}, Author: ${authorName}, Key: ${authorKey}, InList: ${isInVerifiedList}, IsOwner: ${isOwner}, Verified: ${isVerified}`)
                 return (
                   <PostCard
                     key={post.id}
