@@ -9,6 +9,9 @@ export async function GET() {
   const token = cookieStore.get(COOKIE_NAME)?.value
   const user = token ? await verifySession(token) : null
 
+  console.log('[profile GET] Token:', token?.slice(0, 20) + '...')
+  console.log('[profile GET] User:', user)
+
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
@@ -23,6 +26,8 @@ export async function GET() {
     .select('*')
     .eq('email', user.email)
     .maybeSingle()
+
+  console.log('[profile GET] DB query result:', { data, error })
 
   if (error) {
     console.error('[profile GET] DB error:', error)
@@ -49,6 +54,9 @@ export async function PATCH(req: NextRequest) {
   const token = cookieStore.get(COOKIE_NAME)?.value
   const user = token ? await verifySession(token) : null
 
+  console.log('[profile PATCH] Token:', token?.slice(0, 20) + '...')
+  console.log('[profile PATCH] User:', user)
+
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
@@ -59,6 +67,7 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json()
   const { name, handle, bio, photo_url, horsepower_wh, horsepower_crank } = body
+  console.log('[profile PATCH] Body:', body)
 
   // First, try to get existing profile
   const { data: existing } = await supabaseServer

@@ -96,10 +96,13 @@ export default function MyProfile() {
       // If logged in, try to load from database first
       if (user) {
         try {
+          console.log('[MyProfile] Loading profile from DB...')
           const res = await fetch('/api/profile')
+          console.log('[MyProfile] Profile response:', res.status)
           if (res.ok) {
             const { profile } = await res.json()
-            if (profile) {
+            console.log('[MyProfile] Loaded profile:', profile)
+            if (profile && profile.email) {
               setCommenterName(profile.name || '')
               setCommenterHandle(profile.handle || toHandle(profile.name || ''))
               setProfilePhoto(profile.photo_url || '')
@@ -115,11 +118,17 @@ export default function MyProfile() {
               setLoaded(true)
               return
             }
+          } else {
+            const err = await res.text()
+            console.error('[MyProfile] Failed to load profile:', err)
           }
-        } catch {}
+        } catch (e) {
+          console.error('[MyProfile] Error loading profile:', e)
+        }
       }
 
       // Fallback to localStorage
+      console.log('[MyProfile] Falling back to localStorage')
       const name = safeRead<string>('modvora_commenter_name', '')
       const handle = safeRead<string>('modvora_commenter_handle', '') || toHandle(name)
       const photo = safeRead<string>('modvora_profile_photo', '')
@@ -197,6 +206,7 @@ export default function MyProfile() {
     // Save to database if logged in
     if (user) {
       try {
+        console.log('[MyProfile] Saving profile to DB...', { name: trimmedName, handle: finalHandle })
         const res = await fetch('/api/profile', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -209,15 +219,22 @@ export default function MyProfile() {
             horsepower_crank: crankNum && crankNum > 0 ? crankNum : null,
           }),
         })
+        console.log('[MyProfile] Save response:', res.status)
         if (!res.ok) {
-          const err = await res.json()
-          if (err.error?.includes('taken')) {
+          const err = await res.text()
+          console.error('[MyProfile] Failed to save:', err)
+          if (err.includes('taken')) {
             setHandleError(`@${finalHandle} is already taken`)
             setSaving(false)
             return
           }
+        } else {
+          const saved = await res.json()
+          console.log('[MyProfile] Saved profile:', saved)
         }
-      } catch {}
+      } catch (e) {
+        console.error('[MyProfile] Error saving:', e)
+      }
     }
 
     // Update local state
