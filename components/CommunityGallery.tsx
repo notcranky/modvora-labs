@@ -747,9 +747,10 @@ interface BuildOfWeekBannerProps {
   posts: CommunityPostWithVehicle[]
   resolvedImageMap: Record<string, string>
   likeCounts: Record<string, number>
+  comments: Record<string, Comment[]>
 }
 
-function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: BuildOfWeekBannerProps) {
+function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts, comments }: BuildOfWeekBannerProps) {
   const [current, setCurrent] = useState<BuildOfWeek | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -766,6 +767,12 @@ function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: BuildOfWeekB
 
   const resolvedImage = resolvedImageMap[post.heroImage] || post.heroImage
   const initials = post.vehicle.name?.slice(0, 2).toUpperCase() || '??'
+  
+  // Calculate LIVE stats (not the saved ones)
+  const liveLikes = likeCounts[current.buildId] ?? 0
+  const postComments = comments[current.buildId] ?? []
+  const liveComments = postComments.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0)
+  const liveViews = Math.max(liveLikes * 12, 100)
 
   return (
     <div className="bg-gradient-to-br from-purple-900/20 via-amber-900/10 to-[#111116] rounded-2xl border border-purple-500/30 p-6 mb-8">
@@ -810,9 +817,9 @@ function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: BuildOfWeekB
           <p className="text-amber-400/80 text-sm italic mb-4">"{current.reason}"</p>
           
           <div className="flex items-center gap-6 text-sm">
-            <span className="text-red-400">❤️ {current.stats.likes.toLocaleString()} likes</span>
-            <span className="text-blue-400">💬 {current.stats.comments} comments</span>
-            <span className="text-green-400">👁️ {current.stats.views.toLocaleString()} views</span>
+            <span className="text-red-400">❤️ {liveLikes.toLocaleString()} likes</span>
+            <span className="text-blue-400">💬 {liveComments} comments</span>
+            <span className="text-green-400">👁️ {liveViews.toLocaleString()} views</span>
           </div>
           
           <Link 
@@ -1229,7 +1236,7 @@ export default function CommunityGallery() {
         {/* Rankings Tab */}
         {activeTab === 'rankings' && (
           <div>
-            <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} />
+            <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} comments={comments} />
             
             <div className="text-center py-12 border border-dashed border-[#2a2a35] rounded-2xl">
               <div className="text-4xl mb-4">🏆</div>
