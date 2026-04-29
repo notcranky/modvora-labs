@@ -1340,6 +1340,9 @@ function RankingsView({ posts, resolvedImageMap, likeCounts }: {
   resolvedImageMap: Record<string, string>;
   likeCounts: Record<string, number>;
 }) {
+  // Must call hooks before any conditional returns
+  const [activeRankingTab, setActiveRankingTab] = useState<'botw' | 'battles' | 'leaderboards'>('botw')
+  
   // Guard against empty data during loading
   if (!posts || posts.length === 0) {
     return (
@@ -1350,8 +1353,6 @@ function RankingsView({ posts, resolvedImageMap, likeCounts }: {
       </div>
     )
   }
-  
-  const [activeRankingTab, setActiveRankingTab] = useState<'botw' | 'battles' | 'leaderboards'>('botw')
   
   return (
     <div className="px-4 pb-8 max-w-[1600px] mx-auto">
