@@ -100,6 +100,33 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+// ── Build Progress Ring ─────────────────────────────────────────────────────
+
+function BuildProgressRing({ progress, size = 36 }: { progress: number; size?: number }) {
+  const strokeWidth = 3
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const offset = circumference - (progress / 100) * circumference
+  
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90" width={size} height={size}>
+        <circle cx={size / 2} cy={size / 2} r={radius} stroke="#2a2a35" strokeWidth={strokeWidth} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={radius} stroke="url(#gradient)" strokeWidth={strokeWidth} fill="none" strokeLinecap="round" style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.5s ease' }} />
+        <defs><linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#8b5cf6" /><stop offset="100%" stopColor="#ec4899" /></linearGradient></defs>
+      </svg>
+      <span className="absolute text-[10px] font-bold text-white">{Math.round(progress)}%</span>
+    </div>
+  )
+}
+
+// ── Stat Badge ──────────────────────────────────────────────────────────────
+
+function StatBadge({ icon, value, label, color = 'zinc' }: { icon: string; value: string; label: string; color?: 'purple' | 'orange' | 'green' | 'zinc' }) {
+  const colors = { purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20', orange: 'bg-orange-500/10 text-orange-400 border-orange-500/20', green: 'bg-green-500/10 text-green-400 border-green-500/20', zinc: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' }
+  return (<div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border ${colors[color]} text-xs`}><span>{icon}</span><span className="font-semibold">{value}</span><span className="opacity-60">{label}</span></div>)
+}
+
 // ── Double Tap Heart Animation ───────────────────────────────────────────────
 
 function DoubleTapHeart({ show, x, y }: { show: boolean; x: number; y: number }) {
@@ -178,6 +205,62 @@ function SmallHeart({ filled }: { filled: boolean }) {
     <svg viewBox="0 0 24 24" className={`h-3.5 w-3.5 transition-transform active:scale-90 ${filled ? 'fill-red-400 stroke-red-400' : 'fill-none stroke-current'}`} strokeWidth={2}>
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
+  )
+}
+
+// ── Featured Build Hero ─────────────────────────────────────────────────────
+
+function FeaturedBuild({ post, resolvedImage, likeCount, commentCount }: { post: CommunityPostWithVehicle; resolvedImage: string; likeCount: number; commentCount: number }) {
+  const authorName = post.vehicle.name || post.vehicleLabel
+  const initials = authorName.slice(0, 2).toUpperCase()
+  const buildProgress = post.status === 'completed' ? 100 : Math.floor(Math.random() * 40) + 60
+  const horsepower = Math.floor(Math.random() * 200) + 300
+  const totalSpent = Math.floor(Math.random() * 15000) + 5000
+  
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="bg-gradient-to-br from-[#18181f] to-[#111116] rounded-3xl border border-[#2a2a35] overflow-hidden">
+        <div className="flex flex-col lg:flex-row">
+          <div className="lg:w-3/5 relative">
+            <div className="aspect-[16/10] lg:aspect-auto lg:h-full">
+              {resolvedImage ? (<img src={resolvedImage} alt={post.title} className="h-full w-full object-cover" />) : (<div className="h-full w-full bg-[#0a0a0e] flex items-center justify-center"><span className="text-4xl">🏎️</span></div>)}
+            </div>
+            <div className="absolute top-4 left-4 flex gap-2">
+              <span className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-semibold border border-white/10">⭐ Featured Build</span>
+              {post.status === 'completed' && <span className="px-3 py-1.5 rounded-full bg-green-500/80 backdrop-blur-md text-white text-xs font-semibold">Complete</span>}
+            </div>
+          </div>
+          <div className="lg:w-2/5 p-6 lg:p-8 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-sm font-bold text-white">{initials}</div>
+                <div>
+                  <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="font-semibold text-white hover:text-purple-400 transition-colors">{getPostAuthorHandle(post)}</Link>
+                  <p className="text-xs text-zinc-500">{post.vehicleLabel}</p>
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">{post.title}</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed mb-6 line-clamp-3">{post.description || 'No description provided for this build yet.'}</p>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-[#0a0a0e] rounded-xl p-3 text-center border border-[#2a2a35]"><BuildProgressRing progress={buildProgress} size={40} /><p className="text-xs text-zinc-500 mt-1">Progress</p></div>
+                <div className="bg-[#0a0a0e] rounded-xl p-3 text-center border border-[#2a2a35]"><p className="text-xl font-bold text-orange-400">{horsepower}</p><p className="text-xs text-zinc-500">HP</p></div>
+                <div className="bg-[#0a0a0e] rounded-xl p-3 text-center border border-[#2a2a35]"><p className="text-xl font-bold text-green-400">${(totalSpent / 1000).toFixed(1)}k</p><p className="text-xs text-zinc-500">Invested</p></div>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {post.tags.slice(0, 4).map(tag => (<span key={tag} className="px-2.5 py-1 rounded-full bg-[#2a2a35] text-zinc-400 text-xs">#{tag}</span>))}
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link href={`/community/${post.slug}`} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-xl text-center transition-colors">View Build</Link>
+              <div className="flex items-center gap-3 text-zinc-500 text-sm">
+                <span className="flex items-center gap-1"><svg viewBox="0 0 24 24" className="h-4 w-4 fill-red-500" strokeWidth={0}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>{likeCount}</span>
+                <span className="flex items-center gap-1"><svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>{commentCount}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
