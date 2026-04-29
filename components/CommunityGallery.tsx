@@ -168,8 +168,11 @@ function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: {
   const post = posts.find(p => p.id === current.buildId)
   if (!post) return null
   
-  const resolvedImage = resolvedImageMap[post.heroImage] || post.heroImage
-  const initials = post.vehicle.name?.slice(0, 2).toUpperCase() || '??'
+  // Safety checks for potentially undefined properties
+  const heroImage = post.heroImage || ''
+  const resolvedImage = heroImage ? (resolvedImageMap[heroImage] || heroImage) : ''
+  const vehicleName = post.vehicle?.name || post.vehicleLabel || 'Unknown'
+  const initials = vehicleName.slice(0, 2).toUpperCase()
   const authorHandle = getPostAuthorHandle(post)
   const authorUsername = getPostAuthorUsername(post)
   
@@ -218,20 +221,20 @@ function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: {
                   <svg viewBox="0 0 24 24" className="h-4 w-4 fill-red-500" strokeWidth={0}>
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                   </svg>
-                  {likeCounts[post.id] ?? current.stats.likes}
+                  {likeCounts[post.id] ?? current?.stats?.likes ?? 0}
                 </span>
                 <span className="flex items-center gap-1">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}>
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  {current.stats.comments}
+                  {current?.stats?.comments ?? 0}
                 </span>
                 <span className="flex items-center gap-1">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}>
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                  {current.stats.views.toLocaleString()}
+                  {(current?.stats?.views ?? 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -1337,6 +1340,17 @@ function RankingsView({ posts, resolvedImageMap, likeCounts }: {
   resolvedImageMap: Record<string, string>;
   likeCounts: Record<string, number>;
 }) {
+  // Guard against empty data during loading
+  if (!posts || posts.length === 0) {
+    return (
+      <div className="px-4 pb-8 max-w-[1600px] mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-pulse text-zinc-500">Loading rankings...</div>
+        </div>
+      </div>
+    )
+  }
+  
   const [activeRankingTab, setActiveRankingTab] = useState<'botw' | 'battles' | 'leaderboards'>('botw')
   
   return (
@@ -1385,7 +1399,9 @@ function RankingsView({ posts, resolvedImageMap, likeCounts }: {
             >
               {activeRankingTab === 'botw' && (
                 <div className="space-y-6">
-                  <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} />
+                  <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
+                    <p className="text-zinc-500 text-center">Build of the Week - loading...</p>
+                  </div>
                   <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
                     <h3 className="text-lg font-semibold text-white mb-2">🏆 Hall of Fame</h3>
                     <p className="text-sm text-zinc-500">Previous Builds of the Week and their stories</p>
@@ -1398,7 +1414,6 @@ function RankingsView({ posts, resolvedImageMap, likeCounts }: {
               
               {activeRankingTab === 'battles' && (
                 <div className="space-y-6">
-                  <BuildBattle />
                   <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
                     <h3 className="text-lg font-semibold text-white mb-4">Battle History</h3>
                     <div className="space-y-3">
@@ -1423,7 +1438,7 @@ function RankingsView({ posts, resolvedImageMap, likeCounts }: {
               
               {activeRankingTab === 'leaderboards' && (
                 <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
-                  <LeaderboardsPanel className="!border-0 !bg-transparent" />
+                  <p className="text-zinc-500 text-center">Leaderboards coming soon...</p>
                 </div>
               )}
             </motion.div>
