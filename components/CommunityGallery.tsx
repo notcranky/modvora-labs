@@ -18,6 +18,7 @@ import {
   toggleCommentLike as toggleDbCommentLike,
   getCommentLikeCounts
 } from '@/lib/social-db'
+import { getVerifiedUsers, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 import NotificationBell from '@/components/NotificationBell'
 import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
@@ -79,6 +80,39 @@ function timeAgo(dateStr: string): string {
 }
 
 // ── Icons ────────────────────────────────────────────────────────────────────
+
+function VerifiedBadge({ 
+  className = '', 
+  type = 'free',
+  earlySupporter = false 
+}: { 
+  className?: string
+  type?: 'free' | 'paid' | 'admin' | null
+  earlySupporter?: boolean
+}) {
+  // Determine badge color based on type
+  const getColor = () => {
+    if (type === 'admin') return '#f59e0b' // amber/gold
+    if (type === 'paid') {
+      return earlySupporter ? '#f59e0b' : '#a855f7' // amber for early supporters, purple for premium
+    }
+    return '#3b82f6' // blue for free (1K+ followers)
+  }
+  
+  const getTooltip = () => {
+    if (type === 'admin') return 'Modvora Admin'
+    if (type === 'paid') return earlySupporter ? 'Early Supporter' : 'Verified Builder (Premium)'
+    return 'Verified Builder (1K+ followers)'
+  }
+  
+  return (
+    <span className={`inline-flex items-center justify-center ${className}`} title={getTooltip()}>
+      <svg viewBox="0 0 20 20" className="w-full h-full" style={{ fill: getColor() }}>
+        <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+      </svg>
+    </span>
+  )
+}
 
 function HeartIcon({ filled }: { filled: boolean }) {
   return <svg viewBox="0 0 24 24" className={`h-6 w-6 ${filled ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-current'}`} strokeWidth={1.8}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
@@ -227,6 +261,9 @@ interface PostCardProps {
   tagCounts: Record<string, number>
   defaultAuthor: string
   isOwner: boolean
+  isVerified?: boolean
+  verifiedType?: 'free' | 'paid' | 'admin' | null
+  earlySupporter?: boolean
   commentLikedIds: Set<string>
   commentLikeCounts: Record<string, number>
   onLike: () => void
@@ -238,7 +275,7 @@ interface PostCardProps {
 }
 
 function PostCard(props: PostCardProps) {
-  const { post, resolvedImage, liked, saved, likeCount, comments, defaultAuthor, isOwner, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
+  const { post, resolvedImage, liked, saved, likeCount, comments, defaultAuthor, isOwner, isVerified, verifiedType, earlySupporter, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
   const [showComments, setShowComments] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
@@ -272,7 +309,10 @@ function PostCard(props: PostCardProps) {
         <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
           <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-purple-900 text-xs font-semibold text-white hover:opacity-80">{initials}</Link>
           <div className="min-w-0 flex-1">
-            <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="text-sm font-semibold text-white hover:text-purple-400 transition-colors truncate block">{getPostAuthorHandle(post)}</Link>
+            <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-purple-400 transition-colors truncate">
+              {getPostAuthorHandle(post)}
+              {isVerified && <VerifiedBadge className="w-4 h-4 flex-shrink-0" type={verifiedType} earlySupporter={earlySupporter} />}
+            </Link>
             <p className="text-xs text-zinc-600 truncate">{post.vehicleLabel}</p>
           </div>
           <span className="text-xs text-zinc-600 flex-shrink-0">{timeAgo(post.publishedAt ?? post.updatedAt)}</span>
@@ -451,6 +491,7 @@ interface FollowingFeedProps {
   commentLikedIds: Set<string>
   commentLikeCounts: Record<string, number>
   resolvedImageMap: Record<string, string>
+  verifiedUsers: Set<string>
   loading: boolean
   onLike: (postId: string) => void
   onSave: (postId: string) => void
@@ -461,7 +502,7 @@ interface FollowingFeedProps {
 }
 
 function FollowingFeed(props: FollowingFeedProps) {
-  const { posts, likes, saves, likeCounts, comments, tagCounts, commenterName, ownedVehicleIds, ownedPostIds, commentLikedIds, commentLikeCounts, resolvedImageMap, loading, onLike, onSave, onAddComment, onNameChange, onLikeComment, onReplyToComment } = props
+  const { posts, likes, saves, likeCounts, comments, tagCounts, commenterName, ownedVehicleIds, ownedPostIds, commentLikedIds, commentLikeCounts, resolvedImageMap, verifiedUsers, loading, onLike, onSave, onAddComment, onNameChange, onLikeComment, onReplyToComment } = props
   const followedPosts = useMemo(() => {
     const followed = getFollowedUsernames()
     return posts.filter(p => followed.has(getPostAuthorUsername(p)))
@@ -540,7 +581,9 @@ export default function CommunityGallery() {
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeTab, setActiveTab] = useState<'feed' | 'rankings' | 'following'>('feed')
+  const [activeTab, setActiveTab] = useState<'feed' | 'rankings' | 'following' | 'verified'>('feed')
+  const [verifiedUsers, setVerifiedUsers] = useState<Set<string>>(new Set())
+  const [verifiedProfiles, setVerifiedProfiles] = useState<Map<string, ProfileWithVerification>>(new Map())
   const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
 
   // Check auth on mount
@@ -618,12 +661,20 @@ export default function CommunityGallery() {
         setComments(dbComments)
         setCommentLikedIds(userCommentLikes)
         setCommentLikeCounts(dbCommentLikeCounts)
-      } else {
-        // Fallback to localStorage
-        setLikeCounts(safeRead(LIKE_COUNTS_KEY, {}))
-        setComments(safeRead(COMMENTS_KEY, {}))
-        setCommentLikedIds(new Set(safeRead<string[]>(COMMENT_LIKES_KEY, [])))
       }
+      
+      // Load verified users (works for both logged in and anonymous)
+      const verified = await getVerifiedUsers()
+      const verifiedSet = new Set<string>()
+      const verifiedMap = new Map<string, ProfileWithVerification>()
+      verified.forEach(profile => {
+        verifiedSet.add(profile.handle)
+        verifiedSet.add(profile.username)
+        verifiedMap.set(profile.handle, profile)
+        verifiedMap.set(profile.username, profile)
+      })
+      setVerifiedUsers(verifiedSet)
+      setVerifiedProfiles(verifiedMap)
       
       setLoading(false)
     }
@@ -779,7 +830,7 @@ export default function CommunityGallery() {
       {/* Navigation Tabs */}
       <div className="px-4 py-2 max-w-7xl mx-auto border-b border-[#1e1e24]/50">
         <div className="flex items-center gap-1">
-          {(['feed', 'rankings', 'following'] as const).map((tab) => (
+          {(['feed', 'rankings', 'following', 'verified'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -788,6 +839,7 @@ export default function CommunityGallery() {
               {tab === 'feed' && '📰 Feed'}
               {tab === 'rankings' && '🏆 Rankings'}
               {tab === 'following' && '👥 Following'}
+              {tab === 'verified' && '✅ Verified'}
               {activeTab === tab && (
                 <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />
               )}
@@ -935,6 +987,100 @@ export default function CommunityGallery() {
             onLikeComment={handleLikeComment}
             onReplyToComment={handleReplyToComment}
           />
+        )}
+
+        {/* Verified Tab */}
+        {activeTab === 'verified' && (
+          <div>
+            {/* Verified Builder Showcase */}
+            <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-purple-900/20 via-blue-900/10 to-[#111116] border border-purple-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-2xl">✅</span>
+                <h2 className="text-lg font-semibold text-white">Verified Builders</h2>
+                <span className="ml-auto text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">
+                  {verifiedUsers.size} Verified
+                </span>
+              </div>
+              <p className="text-sm text-zinc-400 mb-4">
+                Verified builders have either reached 1,000+ followers or subscribed to Modvora Premium. 
+                Their posts get boosted visibility in the feed.
+              </p>
+              <div className="flex gap-4 flex-wrap">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
+                    <svg viewBox="0 0 20 20" className="w-3 h-3 fill-white"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                  </span>
+                  <span className="text-zinc-300">Free (1K+ followers)</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center">
+                    <svg viewBox="0 0 20 20" className="w-3 h-3 fill-white"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                  </span>
+                  <span className="text-zinc-300">Premium Subscriber</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center">
+                    <svg viewBox="0 0 20 20" className="w-3 h-3 fill-white"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                  </span>
+                  <span className="text-zinc-300">Early Supporter</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Verified Posts Feed */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden">
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
+                      <div className="skeleton h-8 w-8 rounded-full" />
+                      <div className="skeleton h-3 w-24 rounded-full" />
+                    </div>
+                    <div className="skeleton aspect-square w-full" />
+                  </div>
+                ))
+              ) : posts.filter(p => verifiedUsers.has(getPostAuthorUsername(p))).length === 0 ? (
+                <div className="col-span-full text-center py-16">
+                  <div className="text-4xl mb-4">✅</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">No verified posts yet</h3>
+                  <p className="text-zinc-500">Verified builders will appear here</p>
+                </div>
+              ) : (
+                posts
+                  .filter(p => verifiedUsers.has(getPostAuthorUsername(p)))
+                  .sort((a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0))
+                  .map((post) => {
+                    const authorHandle = getPostAuthorUsername(post)
+                    const profile = verifiedProfiles.get(authorHandle)
+                    return (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
+                        liked={!!likes[post.id]}
+                        saved={!!saves[post.id]}
+                        likeCount={likeCounts[post.id] ?? 0}
+                        comments={comments[post.id] ?? []}
+                        tagCounts={tagCounts}
+                        defaultAuthor={commenterName}
+                        isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
+                        isVerified={true}
+                        verifiedType={profile?.verified_type}
+                        earlySupporter={profile?.early_supporter}
+                        commentLikedIds={commentLikedIds}
+                        commentLikeCounts={commentLikeCounts}
+                        onLike={() => handleLike(post.id)}
+                        onSave={() => handleSave(post.id)}
+                        onAddComment={(text, author) => handleAddComment(post.id, text, author)}
+                        onAuthorChange={handleNameChange}
+                        onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
+                        onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
+                      />
+                    )
+                  })
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
