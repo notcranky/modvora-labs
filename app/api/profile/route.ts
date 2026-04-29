@@ -17,13 +17,15 @@ export async function GET() {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
   }
 
+  // Try to get profile by email
   const { data, error } = await supabaseServer
     .from('user_profiles')
     .select('*')
     .eq('email', user.email)
-    .single()
+    .maybeSingle()
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
+    console.error('[profile GET] DB error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -58,35 +60,55 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json()
   const { name, handle, bio, photo_url, horsepower_wh, horsepower_crank } = body
 
-  // Get user id from auth.users by email
-  const { data: authUser } = await supabaseServer
-    .from('auth.users')
+  // First, try to get existing profile
+  const { data: existing } = await supabaseServer
+    .from('user_profiles')
     .select('id')
     .eq('email', user.email)
-    .single()
+    .maybeSingle()
 
-  // Use upsert to create or update
-  const { data, error } = await supabaseServer
-    .from('user_profiles')
-    .upsert({
-      email: user.email,
-      name: name ?? user.name,
-      handle: handle || null,
-      bio: bio || null,
-      photo_url: photo_url || null,
-      horsepower_wh: horsepower_wh || null,
-      horsepower_crank: horsepower_crank || null,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'email' })
-    .select()
-    .single()
+  let result
 
-  if (error) {
-    if (error.code === '23505') {
-      return NextResponse.json({ error: 'Handle already taken' }, { status: 409 })
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (existing) {
+    // Update existing
+    result = await supabaseServer
+      .from('user_profiles')
+      .update({
+        name: name ?? user.name,
+        handle: handle || null,
+        bio: bio || null,
+        photo_url: photo_url || null,
+        horsepower_wh: horsepower_wh || null,
+        horsepower_crank: horsepower_crank || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('email', user.email)
+      .select()
+      .single()
+  } else {
+    // Insert new (id will be generated, not linked to auth.users for now)
+    result = await supabaseServer
+      .from('user_profiles')
+      .insert({
+        email: user.email,
+        name: name ?? user.name,
+        handle: handle || null,
+        bio: bio || null,
+        photo_url: photo_url || null,
+        horsepower_wh: horsepower_wh || null,
+        horsepower_crank: horsepower_crank || null,
+      })
+      .select()
+      .single()
   }
 
-  return NextResponse.json({ profile: data })
+  if (result.error) {
+    if (result.error.code === '23505') {
+      return NextResponse.json({ error: 'Handle already taken' }, { status: 409 })
+    }
+    console.error('[profile PATCH] DB error:', result.error)
+    return NextResponse.json({ error: result.error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ profile: result.data })
 }
