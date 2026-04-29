@@ -2,14 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function SignInForm() {
+export default function SignUpForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const from = searchParams.get('from') || '/dashboard'
 
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -17,24 +20,35 @@ export default function SignInForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const res = await fetch('/api/auth/signin', {
+      const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Sign in failed')
+        setError(data.error || 'Sign up failed')
         setLoading(false)
         return
       }
 
-      // Hard redirect so the server layout re-renders against the fresh auth cookie.
+      // Success - redirect to dashboard
       window.location.replace(from)
     } catch {
       setError('Something went wrong. Try again.')
@@ -58,13 +72,12 @@ export default function SignInForm() {
             </div>
             <span className="text-white font-bold text-xl">Modvora <span className="text-purple-400">Labs</span></span>
           </Link>
-          <h1 className="text-white text-2xl font-black mb-2">Sign In</h1>
-          <p className="text-zinc-500 text-sm">Access your custom build plan</p>
+          <h1 className="text-white text-2xl font-black mb-2">Create Account</h1>
+          <p className="text-zinc-500 text-sm">Start tracking your build today</p>
         </div>
 
         {/* Card */}
         <div className="bg-[#16161a] border border-[#2a2a30] rounded-2xl p-8">
-
           {/* Error message */}
           {error && (
             <div className="mb-5 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-2">
@@ -73,13 +86,20 @@ export default function SignInForm() {
             </div>
           )}
 
-          {from !== '/dashboard' && (
-            <div className="mb-5 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
-              <p className="text-purple-300 text-sm">Sign in to access your content.</p>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-zinc-400 text-xs font-medium uppercase tracking-wider mb-1.5">
+                Name (optional)
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your name"
+                className="w-full bg-[#0f0f12] border border-[#2a2a30] focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-white placeholder-zinc-600 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+              />
+            </div>
+
             <div>
               <label className="block text-zinc-400 text-xs font-medium uppercase tracking-wider mb-1.5">
                 Email Address
@@ -104,6 +124,7 @@ export default function SignInForm() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
+                  minLength={6}
                   placeholder="••••••••"
                   className="w-full bg-[#0f0f12] border border-[#2a2a30] focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-white placeholder-zinc-600 rounded-xl px-4 py-3 text-sm outline-none transition-colors pr-12"
                 />
@@ -115,6 +136,21 @@ export default function SignInForm() {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
+              <p className="text-zinc-600 text-xs mt-1">Must be at least 6 characters</p>
+            </div>
+
+            <div>
+              <label className="block text-zinc-400 text-xs font-medium uppercase tracking-wider mb-1.5">
+                Confirm Password
+              </label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full bg-[#0f0f12] border border-[#2a2a30] focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-white placeholder-zinc-600 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+              />
             </div>
 
             <button
@@ -129,40 +165,26 @@ export default function SignInForm() {
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
+                  Creating account...
                 </>
               ) : (
-                'Sign In →'
+                'Create Account →'
               )}
             </button>
           </form>
         </div>
 
-        {/* Sign up & forgot password */}
-        <div className="mt-6 flex items-center justify-between text-sm">
-          <Link
-            href="/signup"
-            className="text-purple-400 hover:text-purple-300 transition-colors"
-          >
-            Create account →
-          </Link>
-          <Link
-            href="/reset-password"
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            Forgot password?
-          </Link>
-        </div>
-
-        {/* No account? */}
-        <div className="mt-4 text-center">
-          <p className="text-zinc-500 text-sm mb-3">Don&apos;t have access yet?</p>
-          <Link
-            href="/services"
-            className="inline-flex items-center gap-2 border border-purple-500/30 hover:border-purple-500/60 bg-purple-600/10 hover:bg-purple-600/20 text-purple-300 hover:text-purple-200 px-6 py-3 rounded-xl text-sm font-medium transition-all"
-          >
-            View Plans & Get Access →
-          </Link>
+        {/* Sign in link */}
+        <div className="mt-6 text-center">
+          <p className="text-zinc-500 text-sm">
+            Already have an account?{' '}
+            <Link
+              href="/signin"
+              className="text-purple-400 hover:text-purple-300 transition-colors font-medium"
+            >
+              Sign in →
+            </Link>
+          </p>
         </div>
 
         <p className="text-center text-zinc-700 text-xs mt-6">

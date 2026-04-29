@@ -195,9 +195,15 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
             <>
               <Link
                 href="/signin"
-                className="text-sm text-zinc-400 hover:text-white transition-colors px-4 py-2"
+                className="text-sm text-zinc-400 hover:text-white transition-colors px-3 py-2"
               >
                 Sign In
+              </Link>
+              <Link
+                href="/signup"
+                className="text-sm text-purple-400 hover:text-purple-300 transition-colors px-3 py-2"
+              >
+                Sign Up
               </Link>
               <Link
                 href="/intake"
