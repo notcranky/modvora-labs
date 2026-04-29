@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        maxAge: 10 * 365 * 24 * 60 * 60, // 10 years (until logout)
         path: '/',
       })
       return res
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        maxAge: 10 * 365 * 24 * 60 * 60, // 10 years (until logout)
         path: '/',
       })
       return res
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        maxAge: 10 * 365 * 24 * 60 * 60, // 10 years (until logout)
         path: '/',
       })
       return res
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        maxAge: 10 * 365 * 24 * 60 * 60, // 10 years (until logout)
         path: '/',
       })
 

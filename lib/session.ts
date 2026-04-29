@@ -3,8 +3,8 @@
 export const COOKIE_NAME = 'modvora_session'
 const SECRET = process.env.AUTH_SECRET ?? 'modvora-dev-secret-change-in-production'
 
-// Session lifetime: 30 days
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000
+// Session lasts until user signs out (effectively 10 years)
+const SESSION_DURATION_MS = 10 * 365 * 24 * 60 * 60 * 1000
 
 export interface SessionUser {
   email: string
