@@ -161,6 +161,52 @@ export async function getVerifiedUsers(): Promise<ProfileWithVerification[]> {
   return (data as ProfileWithVerification[]) ?? []
 }
 
+// ===== DIRECT VERIFICATION CHECK =====
+
+export async function getVerifiedStatusByHandle(handle: string): Promise<ProfileWithVerification | null> {
+  if (!supabaseEnabled) return null
+  
+  // Normalize handle for comparison
+  const normalizedHandle = handle.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
+  
+  console.log('[verification] Checking handle:', handle, 'normalized:', normalizedHandle)
+  
+  // Try direct query on profiles table
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('verified', true)
+    .or(`handle.ilike.${handle},username.ilike.${handle}`)
+    .maybeSingle()
+  
+  if (error) {
+    console.error('[verification] Error checking handle:', error)
+    // Try broader search
+    const { data: allData, error: allError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('verified', true)
+    
+    if (allError) {
+      console.error('[verification] Error fetching all verified:', allError)
+      return null
+    }
+    
+    // Manual match
+    const match = allData?.find(p => {
+      const pHandle = p.handle?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
+      const pUsername = p.username?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
+      return pHandle === normalizedHandle || pUsername === normalizedHandle
+    })
+    
+    console.log('[verification] Manual match found:', match ? 'yes' : 'no')
+    return match as ProfileWithVerification | null
+  }
+  
+  console.log('[verification] Direct query result:', data)
+  return data as ProfileWithVerification | null
+}
+
 // ===== VERIFICATION TIERS =====
 
 export function getVerificationStatus(profile: ProfileWithVerification): {

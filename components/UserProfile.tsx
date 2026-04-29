@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle } from '@/lib/community'
 import { getPostAuthorUsername, isFollowing, toggleFollow, getFollowerCount, toHandle } from '@/lib/profiles'
 import { useResolvedImageMap } from '@/lib/local-images'
-import { getVerifiedUsers, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
+import { getVerifiedUsers, getVerifiedStatusByHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 
 function VerifiedBadge({ type = 'free' }: { type?: 'free' | 'paid' | 'admin' }) {
   const color = type === 'admin' ? '#f59e0b' : type === 'paid' ? '#a855f7' : '#3b82f6'
@@ -52,7 +52,18 @@ export default function UserProfile({ username }: UserProfileProps) {
         return match
       })
       console.log('[UserProfile] Found profile:', userProfile)
-      if (userProfile) {
+      
+      // Try direct lookup if not found in list
+      if (!userProfile) {
+        console.log('[UserProfile] Not found in list, trying direct lookup')
+        const directProfile = await getVerifiedStatusByHandle(username)
+        console.log('[UserProfile] Direct lookup result:', directProfile)
+        if (directProfile) {
+          const status = getVerificationStatus(directProfile)
+          console.log('[UserProfile] Setting verification status from direct:', status)
+          setVerificationStatus(status)
+        }
+      } else {
         const status = getVerificationStatus(userProfile)
         console.log('[UserProfile] Setting verification status:', status)
         setVerificationStatus(status)

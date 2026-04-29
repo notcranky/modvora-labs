@@ -18,7 +18,7 @@ import {
   toggleCommentLike as toggleDbCommentLike,
   getCommentLikeCounts
 } from '@/lib/social-db'
-import { getVerifiedUsers, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
+import { getVerifiedUsers, getVerifiedStatusByHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 import NotificationBell from '@/components/NotificationBell'
 import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
@@ -682,6 +682,21 @@ export default function CommunityGallery() {
         verifiedMap.set(profile.username, profile)
       })
       console.log('[CommunityGallery] Verified set:', Array.from(verifiedSet))
+      
+      // Fallback: Direct check for each author if set is empty
+      if (verifiedSet.size === 0 && fetched.length > 0) {
+        console.log('[CommunityGallery] No verified users in list, checking authors directly')
+        const uniqueAuthors = [...new Set(fetched.map(p => toHandle(p.vehicle.name || 'unknown')))]
+        for (const author of uniqueAuthors) {
+          const directProfile = await getVerifiedStatusByHandle(author)
+          if (directProfile) {
+            console.log('[CommunityGallery] Found verified via direct check:', author)
+            verifiedSet.add(author)
+            verifiedMap.set(author, directProfile)
+          }
+        }
+      }
+      
       setVerifiedUsers(verifiedSet)
       setVerifiedProfiles(verifiedMap)
       
