@@ -79,7 +79,7 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
           <Image src="/favicon-logo.png" alt="Modvora" width={677} height={369} className="h-9 w-auto shrink-0" />
-          <span className="font-semibold text-white text-lg tracking-tight">
+          <span className="font-semibold text-white text-lg tracking-tight hidden sm:inline">
             Modvora <span className="text-purple-400">Labs</span>
           </span>
         </Link>
@@ -119,16 +119,18 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/community/me"
-            aria-label="My profile"
-            className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${isActive('/community/me') ? 'border-purple-500/50 bg-purple-500/10 text-purple-300' : 'border-[#2a2a35] bg-[#18181f] text-zinc-400 hover:border-purple-500/40 hover:text-white'}`}
-          >
-            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-none stroke-current" strokeWidth={1.8}>
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            </svg>
-          </Link>
+          {user && (
+            <Link
+              href="/community/me"
+              aria-label="My profile"
+              className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${isActive('/community/me') ? 'border-purple-500/50 bg-purple-500/10 text-purple-300' : 'border-[#2a2a35] bg-[#18181f] text-zinc-400 hover:border-purple-500/40 hover:text-white'}`}
+            >
+              <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-none stroke-current" strokeWidth={1.8}>
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+              </svg>
+            </Link>
+          )}
           {user ? (
             <div className="relative" ref={profileRef}>
               <button
@@ -247,14 +249,16 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/community/me"
-            aria-current={isActive('/community/me') ? 'page' : undefined}
-            className={`text-sm transition-colors ${isActive('/community/me') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
-            onClick={() => setIsOpen(false)}
-          >
-            My Profile
-          </Link>
+          {user && (
+            <Link
+              href="/community/me"
+              aria-current={isActive('/community/me') ? 'page' : undefined}
+              className={`text-sm transition-colors ${isActive('/community/me') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+              onClick={() => setIsOpen(false)}
+            >
+              My Profile
+            </Link>
+          )}
           {isStaff && (
             <Link href="/admin" className="text-sm text-purple-400 font-medium" onClick={() => setIsOpen(false)}>
               ⚡ {isOwner ? 'Owner Panel' : 'Admin Panel'}

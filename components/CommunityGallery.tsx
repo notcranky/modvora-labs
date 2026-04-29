@@ -583,6 +583,13 @@ export default function CommunityGallery() {
   const [sortBy, setSortBy] = useState<'newest' | 'liked'>('newest')
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    // Check if user is logged in by looking for auth cookie
+    const hasAuth = document.cookie.includes('modvora_session')
+    setIsLoggedIn(hasAuth)
+  }, [])
 
   useEffect(() => {
     fetchPublishedBuilds().then((fetched) => {
@@ -729,9 +736,15 @@ export default function CommunityGallery() {
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
-            <Link href="/dashboard/publish" className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500">
-              Publish
-            </Link>
+            {isLoggedIn ? (
+              <Link href="/dashboard/publish" className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500">
+                Publish
+              </Link>
+            ) : (
+              <Link href="/signin?from=/dashboard/publish" className="rounded-xl border border-[#2a2a35] bg-[#18181f] px-4 py-2 text-sm font-medium text-zinc-400 transition-colors hover:border-purple-500/40 hover:text-white">
+                Sign in to Publish
+              </Link>
+            )}
           </div>
         </div>
       </div>
