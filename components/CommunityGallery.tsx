@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle, loadCommunityPosts } from '@/lib/community'
-import { getPostAuthorUsername, getPostAuthorHandle, isFollowing, getFollowedUsernames } from '@/lib/profiles'
+import { getPostAuthorUsername, getPostAuthorHandle, isFollowing, getFollowedUsernames, toHandle } from '@/lib/profiles'
 import { getBuildOfWeek, BuildOfWeek, formatWeekDisplay } from '@/lib/build-of-week'
 import { supabase } from '@/lib/supabase'
 import { 
@@ -581,7 +581,7 @@ export default function CommunityGallery() {
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeTab, setActiveTab] = useState<'feed' | 'rankings' | 'following' | 'verified'>('feed')
+  const [activeTab, setActiveTab] = useState<'feed' | 'rankings' | 'following'>('feed')
   const [verifiedUsers, setVerifiedUsers] = useState<Set<string>>(new Set())
   const [verifiedProfiles, setVerifiedProfiles] = useState<Map<string, ProfileWithVerification>>(new Map())
   const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
@@ -668,8 +668,15 @@ export default function CommunityGallery() {
       const verifiedSet = new Set<string>()
       const verifiedMap = new Map<string, ProfileWithVerification>()
       verified.forEach(profile => {
+        // Use both handle formats for matching (posts use slugify, profiles use toHandle)
+        const normalizedHandle = toHandle(profile.handle)
+        const normalizedUsername = toHandle(profile.username)
+        verifiedSet.add(normalizedHandle)
+        verifiedSet.add(normalizedUsername)
         verifiedSet.add(profile.handle)
         verifiedSet.add(profile.username)
+        verifiedMap.set(normalizedHandle, profile)
+        verifiedMap.set(normalizedUsername, profile)
         verifiedMap.set(profile.handle, profile)
         verifiedMap.set(profile.username, profile)
       })
@@ -830,7 +837,7 @@ export default function CommunityGallery() {
       {/* Navigation Tabs */}
       <div className="px-4 py-2 max-w-7xl mx-auto border-b border-[#1e1e24]/50">
         <div className="flex items-center gap-1">
-          {(['feed', 'rankings', 'following', 'verified'] as const).map((tab) => (
+          {(['feed', 'rankings', 'following'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -839,7 +846,6 @@ export default function CommunityGallery() {
               {tab === 'feed' && '📰 Feed'}
               {tab === 'rankings' && '🏆 Rankings'}
               {tab === 'following' && '👥 Following'}
-              {tab === 'verified' && '✅ Verified'}
               {activeTab === tab && (
                 <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />
               )}
@@ -926,8 +932,9 @@ export default function CommunityGallery() {
               </div>
             ) : (
               filteredPosts.map((post) => {
-                const authorHandle = getPostAuthorUsername(post)
-                const profile = verifiedProfiles.get(authorHandle)
+                const authorName = post.vehicle.name || 'unknown'
+                const authorKey = toHandle(authorName)
+                const profile = verifiedProfiles.get(authorKey)
                 return (
                   <PostCard
                     key={post.id}
@@ -940,7 +947,7 @@ export default function CommunityGallery() {
                     tagCounts={tagCounts}
                     defaultAuthor={commenterName}
                     isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
-                    isVerified={verifiedUsers.has(authorHandle)}
+                    isVerified={verifiedUsers.has(authorKey)}
                     verifiedType={profile?.verified_type}
                     earlySupporter={profile?.early_supporter}
                     commentLikedIds={commentLikedIds}
@@ -996,99 +1003,7 @@ export default function CommunityGallery() {
           />
         )}
 
-        {/* Verified Tab */}
-        {activeTab === 'verified' && (
-          <div>
-            {/* Verified Builder Showcase */}
-            <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-purple-900/20 via-blue-900/10 to-[#111116] border border-purple-500/30">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl">✅</span>
-                <h2 className="text-lg font-semibold text-white">Verified Builders</h2>
-                <span className="ml-auto text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">
-                  {verifiedUsers.size} Verified
-                </span>
-              </div>
-              <p className="text-sm text-zinc-400 mb-4">
-                Verified builders have either reached 1,000+ followers or subscribed to Modvora Premium. 
-                Their posts get boosted visibility in the feed.
-              </p>
-              <div className="flex gap-4 flex-wrap">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
-                    <svg viewBox="0 0 20 20" className="w-3 h-3 fill-white"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                  </span>
-                  <span className="text-zinc-300">Free (1K+ followers)</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center">
-                    <svg viewBox="0 0 20 20" className="w-3 h-3 fill-white"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                  </span>
-                  <span className="text-zinc-300">Premium Subscriber</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center">
-                    <svg viewBox="0 0 20 20" className="w-3 h-3 fill-white"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                  </span>
-                  <span className="text-zinc-300">Early Supporter</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Verified Posts Feed */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden">
-                    <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
-                      <div className="skeleton h-8 w-8 rounded-full" />
-                      <div className="skeleton h-3 w-24 rounded-full" />
-                    </div>
-                    <div className="skeleton aspect-square w-full" />
-                  </div>
-                ))
-              ) : posts.filter(p => verifiedUsers.has(getPostAuthorUsername(p))).length === 0 ? (
-                <div className="col-span-full text-center py-16">
-                  <div className="text-4xl mb-4">✅</div>
-                  <h3 className="text-xl font-semibold text-white mb-2">No verified posts yet</h3>
-                  <p className="text-zinc-500">Verified builders will appear here</p>
-                </div>
-              ) : (
-                posts
-                  .filter(p => verifiedUsers.has(getPostAuthorUsername(p)))
-                  .sort((a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0))
-                  .map((post) => {
-                    const authorHandle = getPostAuthorUsername(post)
-                    const profile = verifiedProfiles.get(authorHandle)
-                    return (
-                      <PostCard
-                        key={post.id}
-                        post={post}
-                        resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
-                        liked={!!likes[post.id]}
-                        saved={!!saves[post.id]}
-                        likeCount={likeCounts[post.id] ?? 0}
-                        comments={comments[post.id] ?? []}
-                        tagCounts={tagCounts}
-                        defaultAuthor={commenterName}
-                        isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
-                        isVerified={true}
-                        verifiedType={profile?.verified_type}
-                        earlySupporter={profile?.early_supporter}
-                        commentLikedIds={commentLikedIds}
-                        commentLikeCounts={commentLikeCounts}
-                        onLike={() => handleLike(post.id)}
-                        onSave={() => handleSave(post.id)}
-                        onAddComment={(text, author) => handleAddComment(post.id, text, author)}
-                        onAuthorChange={handleNameChange}
-                        onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
-                        onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
-                      />
-                    )
-                  })
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
