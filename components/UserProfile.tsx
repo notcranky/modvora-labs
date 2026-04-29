@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle } from '@/lib/community'
 import { getPostAuthorUsername, isFollowing, toggleFollow, getFollowerCount, toHandle } from '@/lib/profiles'
 import { useResolvedImageMap } from '@/lib/local-images'
-import { getVerifiedUsers, getVerifiedStatusByHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
+import { getVerifiedUsers, getVerifiedStatusByHandle, isOwnerHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 
 function VerifiedBadge({ type = 'free' }: { type?: 'free' | 'paid' | 'admin' }) {
   const color = type === 'admin' ? '#f59e0b' : type === 'paid' ? '#a855f7' : '#3b82f6'
@@ -53,8 +53,21 @@ export default function UserProfile({ username }: UserProfileProps) {
       })
       console.log('[UserProfile] Found profile:', userProfile)
       
-      // Try direct lookup if not found in list
-      if (!userProfile) {
+      // Check if owner
+      const isOwner = isOwnerHandle(username) || isOwnerHandle(displayName)
+      console.log('[UserProfile] Is owner check:', username, displayName, 'isOwner:', isOwner)
+      
+      if (isOwner) {
+        // Owner is always verified
+        setVerificationStatus({
+          isVerified: true,
+          badgeColor: 'gold',
+          tooltip: 'Modvora Admin',
+          canExpire: false
+        })
+        console.log('[UserProfile] Set owner verification status')
+      } else if (!userProfile) {
+        // Try direct lookup if not found in list
         console.log('[UserProfile] Not found in list, trying direct lookup')
         const directProfile = await getVerifiedStatusByHandle(username)
         console.log('[UserProfile] Direct lookup result:', directProfile)

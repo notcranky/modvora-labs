@@ -2,6 +2,18 @@
 
 import { supabase, supabaseEnabled } from './supabase'
 
+// Helper function to normalize handles (imported from profiles)
+function toHandle(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]+/g, '')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_')
+    .slice(0, 30) || 'user'
+}
+
 export interface ProfileWithVerification {
   id: string
   username: string
@@ -118,9 +130,13 @@ export async function isVerified(userId: string): Promise<boolean> {
   return true
 }
 
+// Owner account - always verified (hardcoded since owner uses custom auth, not Supabase)
+const OWNER_HANDLES = ['jackson', 'jackson_fontes', 'Jackson Fontes', 'Jackson', 'jacksonjfontes']
+
 export async function getVerifiedUsers(): Promise<ProfileWithVerification[]> {
   if (!supabaseEnabled) {
     console.log('[verification] Supabase not enabled')
+    // Still return owner as verified
     return []
   }
   
@@ -143,6 +159,16 @@ export async function getVerifiedUsers(): Promise<ProfileWithVerification[]> {
   }
   
   return (data as ProfileWithVerification[]) ?? []
+}
+
+export function isOwnerHandle(handle: string): boolean {
+  const normalized = handle.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
+  const isOwner = OWNER_HANDLES.some(h => 
+    toHandle(h) === normalized || 
+    h.toLowerCase() === handle.toLowerCase().trim()
+  )
+  console.log('[verification] Checking if owner:', handle, 'normalized:', normalized, 'isOwner:', isOwner)
+  return isOwner
 }
 
 // ===== DIRECT VERIFICATION CHECK =====

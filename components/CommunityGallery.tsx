@@ -18,7 +18,7 @@ import {
   toggleCommentLike as toggleDbCommentLike,
   getCommentLikeCounts
 } from '@/lib/social-db'
-import { getVerifiedUsers, getVerifiedStatusByHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
+import { getVerifiedUsers, getVerifiedStatusByHandle, isOwnerHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 import NotificationBell from '@/components/NotificationBell'
 import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
@@ -952,9 +952,11 @@ export default function CommunityGallery() {
                 const authorName = post.vehicle.name || 'unknown'
                 const authorKey = toHandle(authorName)
                 const profile = verifiedProfiles.get(authorKey)
-                const isVerified = verifiedUsers.has(authorKey)
+                const isInVerifiedList = verifiedUsers.has(authorKey)
+                const isOwner = isOwnerHandle(authorName) || isOwnerHandle(authorKey)
+                const isVerified = isInVerifiedList || isOwner
                 // Debug: always log author info
-                console.log(`[CommunityGallery] Post: ${post.title}, Author: ${authorName}, Key: ${authorKey}, Verified: ${isVerified}, Profile: ${profile ? 'found' : 'not found'}`)
+                console.log(`[CommunityGallery] Post: ${post.title}, Author: ${authorName}, Key: ${authorKey}, InList: ${isInVerifiedList}, IsOwner: ${isOwner}, Verified: ${isVerified}`)
                 return (
                   <PostCard
                     key={post.id}
@@ -967,8 +969,8 @@ export default function CommunityGallery() {
                     tagCounts={tagCounts}
                     defaultAuthor={commenterName}
                     isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
-                    isVerified={verifiedUsers.has(authorKey)}
-                    verifiedType={profile?.verified_type}
+                    isVerified={isVerified}
+                    verifiedType={isOwner ? 'admin' : profile?.verified_type}
                     earlySupporter={profile?.early_supporter}
                     commentLikedIds={commentLikedIds}
                     commentLikeCounts={commentLikeCounts}
