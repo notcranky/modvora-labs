@@ -367,6 +367,15 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
               >
                 📸 Publish Build
               </Link>
+              {/* Prominent Sign Out at bottom of mobile menu */}
+              <div className="mt-4 pt-4 border-t border-[#2a2a30]">
+                <button
+                  onClick={() => signOut()}
+                  className="w-full text-left text-sm font-semibold text-red-400 hover:text-red-300 flex items-center gap-2 py-2"
+                >
+                  <span>🚪</span> Sign Out
+                </button>
+              </div>
             </>
           ) : (
             <>
