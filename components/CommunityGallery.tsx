@@ -9,6 +9,7 @@ import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
 import { useResolvedImageMap } from '@/lib/local-images'
 import { loadVehicles } from '@/lib/garage'
+import { motion, AnimatePresence } from 'framer-motion'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,91 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hrs / 24)
   if (days < 30) return `${days}d ago`
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// ── Stories Bar (Instagram-style) ────────────────────────────────────────────
+
+interface StoryUser {
+  name: string
+  handle: string
+  hasPost: boolean
+  image?: string
+}
+
+function StoriesBar({ users, onSelectUser }: { users: StoryUser[]; onSelectUser: (handle: string) => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  
+  return (
+    <div className="sticky top-0 z-30 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-[#1e1e24]/50">
+      <div 
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto px-4 py-4 scrollbar-hide"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {/* Add Story button */}
+        <button className="flex flex-col items-center gap-1.5 flex-shrink-0">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-full border-2 border-dashed border-purple-500/50 bg-[#18181f] flex items-center justify-center">
+              <span className="text-2xl">+</span>
+            </div>
+          </div>
+          <span className="text-[10px] text-zinc-400">Add</span>
+        </button>
+        
+        {/* User stories */}
+        {users.map((user, i) => (
+          <button 
+            key={user.handle} 
+            onClick={() => onSelectUser(user.handle)}
+            className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
+          >
+            <div className={`relative p-[2px] rounded-full ${i === 0 ? 'bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400' : 'bg-[#2a2a35]'}`}>
+              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#2a2a35] to-[#1a1a24] flex items-center justify-center overflow-hidden border-2 border-[#0a0a0b]">
+                {user.image ? (
+                  <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-lg font-semibold text-zinc-300">
+                    {user.name.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              {i === 0 && (
+                <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-purple-500 border-2 border-[#0a0a0b] flex items-center justify-center">
+                  <span className="text-[8px] text-white font-bold">LIVE</span>
+                </div>
+              )}
+            </div>
+            <span className="text-[10px] text-zinc-400 group-hover:text-white transition-colors truncate max-w-[64px]">
+              {user.handle.length > 10 ? user.handle.slice(0, 9) + '…' : user.handle}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Double Tap Heart Animation ───────────────────────────────────────────────
+
+function DoubleTapHeart({ show, x, y }: { show: boolean; x: number; y: number }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1.2, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          style={{ left: x - 50, top: y - 50 }}
+          className="absolute z-20 pointer-events-none"
+        >
+          <svg viewBox="0 0 24 24" className="h-24 w-24 fill-red-500 stroke-red-500 drop-shadow-lg" strokeWidth={0}>
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
 }
 
 // ── Icons ────────────────────────────────────────────────────────────────────
@@ -390,6 +476,10 @@ interface PostCardProps {
 function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagCounts, defaultAuthor, isOwner, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment }: PostCardProps) {
   const [showComments, setShowComments] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showHeart, setShowHeart] = useState(false)
+  const [heartPos, setHeartPos] = useState({ x: 0, y: 0 })
+  const lastTapRef = useRef(0)
+  const imageRef = useRef<HTMLDivElement>(null)
 
   function handleShare() {
     const url = `${window.location.origin}/community/${post.slug}`
@@ -399,6 +489,28 @@ function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagC
     })
   }
 
+  // Double-tap/click to like (Instagram style)
+  function handleImageClick(e: React.MouseEvent | React.TouchEvent) {
+    const now = Date.now()
+    const timeDiff = now - lastTapRef.current
+    
+    // Get click position
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY
+    
+    if (timeDiff < 300) {
+      // Double tap detected
+      const rect = imageRef.current?.getBoundingClientRect()
+      if (rect) {
+        setHeartPos({ x: clientX - rect.left, y: clientY - rect.top })
+        setShowHeart(true)
+        if (!liked) onLike()
+        setTimeout(() => setShowHeart(false), 1000)
+      }
+    }
+    lastTapRef.current = now
+  }
+
   const authorName = post.vehicle.name || post.vehicleLabel
   const initials = authorName.slice(0, 2).toUpperCase()
   const previewComments = comments.slice(-2)
@@ -406,110 +518,150 @@ function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagC
 
   return (
     <>
-      <article className="overflow-hidden rounded-[24px] border border-[#1e1e24] bg-[#0e0e12]">
-        {/* Header */}
+      <article className="bg-[#0a0a0b] border-b border-[#1e1e24] last:border-b-0">
+        {/* Instagram-style Header */}
         <div className="flex items-center gap-3 px-4 py-3">
-          <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-purple-900 text-xs font-bold text-white hover:opacity-80 transition-opacity">
-            {initials}
+          <Link 
+            href={`/community/profile/${getPostAuthorUsername(post)}`} 
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 p-[2px] hover:opacity-90 transition-opacity"
+          >
+            <div className="h-full w-full rounded-full bg-[#18181f] flex items-center justify-center overflow-hidden">
+              <span className="text-xs font-semibold text-white">{initials}</span>
+            </div>
           </Link>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="truncate text-sm font-semibold text-white hover:text-purple-400 transition-colors">{authorName}</Link>
-              <span className="shrink-0 text-xs text-zinc-600">@{getPostAuthorHandle(post)}</span>
-              {isOwner && <HPBadge hp={getStoredHP().whp} crankHP={getStoredHP().crank} size="sm" showLabel={false} />}
-            </div>
-            <p className="truncate text-xs text-zinc-500">{post.vehicleLabel} · {timeAgo(post.publishedAt ?? post.updatedAt)}</p>
+            <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="text-sm font-semibold text-white hover:text-zinc-300 transition-colors">
+              {getPostAuthorHandle(post)}
+            </Link>
+            <p className="text-xs text-zinc-600">{post.vehicleLabel}</p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span className={`text-[10px] font-medium uppercase tracking-widest ${post.status === 'completed' ? 'text-green-500/70' : 'text-zinc-600'}`}>
-              {post.status === 'completed' ? 'Done' : 'Building'}
-            </span>
-            {isOwner && (
-              <Link href={`/dashboard/publish?edit=${post.slug}`} className="rounded-full border border-[#2a2a35] bg-[#18181f] px-2.5 py-1 text-[10px] font-medium text-zinc-400 transition-colors hover:border-purple-500/40 hover:text-white">
-                Edit
-              </Link>
-            )}
-          </div>
+          <span className="text-xs text-zinc-600">{timeAgo(post.publishedAt ?? post.updatedAt)}</span>
+          {isOwner && (
+            <Link href={`/dashboard/publish?edit=${post.slug}`} className="ml-2">
+              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-zinc-500" strokeWidth={2}>
+                <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
+              </svg>
+            </Link>
+          )}
         </div>
 
-        {/* Photo */}
-        <Link href={`/community/${post.slug}`} className="block">
-          <div className="relative w-full overflow-hidden bg-[#0a0a0e]" style={{ aspectRatio: '4/3' }}>
-            {resolvedImage ? (
-              <img
-                src={resolvedImage}
-                alt={post.title}
-                className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-zinc-700">
-                <svg viewBox="0 0 24 24" className="h-10 w-10 fill-none stroke-current" strokeWidth={1.5}>
-                  <rect x="3" y="3" width="18" height="18" rx="3" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <path d="m21 15-5-5L5 21" />
-                </svg>
-              </div>
-            )}
-          </div>
-        </Link>
+        {/* Full-bleed Photo with Double-tap */}
+        <div 
+          ref={imageRef}
+          className="relative w-full bg-[#0a0a0e] cursor-pointer select-none"
+          style={{ aspectRatio: '4/5' }} // Taller like Instagram/TikTok
+          onClick={handleImageClick}
+        >
+          {resolvedImage ? (
+            <img
+              src={resolvedImage}
+              alt={post.title}
+              className="h-full w-full object-cover"
+              draggable={false}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-zinc-700">
+              <svg viewBox="0 0 24 24" className="h-12 w-12 fill-none stroke-current" strokeWidth={1.5}>
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            </div>
+          )}
+          
+          {/* Double-tap heart animation */}
+          <DoubleTapHeart show={showHeart} x={heartPos.x} y={heartPos.y} />
+          
+          {/* Status badge overlay */}
+          {post.status === 'completed' && (
+            <div className="absolute top-3 right-3 bg-green-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full">
+              COMPLETE
+            </div>
+          )}
+        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-0.5 px-3 pt-3">
-          <button
-            onClick={onLike}
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 text-sm transition-colors ${liked ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}
-            aria-label="Like"
-          >
-            <HeartIcon filled={liked} />
-          </button>
-          <button
-            onClick={() => setShowComments(true)}
-            className="flex items-center gap-1.5 rounded-full px-2.5 py-2 text-sm text-zinc-400 transition-colors hover:text-white"
-            aria-label="Comment"
-          >
-            <CommentIcon />
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={handleShare}
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 text-sm transition-colors ${copied ? 'text-green-400' : 'text-zinc-400 hover:text-white'}`}
-            aria-label="Share"
-          >
-            {copied ? <span className="text-xs font-medium">Copied!</span> : <ShareIcon />}
-          </button>
+        {/* Instagram-style Actions */}
+        <div className="flex items-center justify-between px-3 pt-3 pb-2">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onLike}
+              className={`p-2 -ml-2 transition-transform active:scale-90 ${liked ? 'text-red-500' : 'text-white hover:text-zinc-400'}`}
+              aria-label="Like"
+            >
+              <svg viewBox="0 0 24 24" className={`h-7 w-7 ${liked ? 'fill-current' : 'fill-none'} stroke-current`} strokeWidth={liked ? 0 : 2}>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowComments(true)}
+              className="p-2 text-white hover:text-zinc-400 transition-colors"
+              aria-label="Comment"
+            >
+              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current" strokeWidth={2}>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+            <button
+              onClick={handleShare}
+              className="p-2 text-white hover:text-zinc-400 transition-colors"
+              aria-label="Share"
+            >
+              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current" strokeWidth={2}>
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
           <button
             onClick={onSave}
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 text-sm transition-colors ${saved ? 'text-purple-400' : 'text-zinc-400 hover:text-white'}`}
+            className={`p-2 -mr-2 transition-transform active:scale-90 ${saved ? 'text-white' : 'text-white hover:text-zinc-400'}`}
             aria-label="Save"
           >
-            <BookmarkIcon filled={saved} />
+            <svg viewBox="0 0 24 24" className={`h-7 w-7 ${saved ? 'fill-current' : 'fill-none'} stroke-current`} strokeWidth={saved ? 0 : 2}>
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
           </button>
         </div>
 
         {/* Likes count */}
         {likeCount > 0 && (
-          <p className="px-4 pb-1 text-sm font-semibold text-white">
+          <p className="px-4 pb-2 text-sm font-semibold text-white">
             {likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}
           </p>
         )}
 
-        {/* Caption */}
+        {/* Caption - Instagram style */}
         <div className="px-4 pb-3">
           <p className="text-sm leading-relaxed">
-            <span className="font-semibold text-white">{post.vehicleLabel} </span>
-            <span className="font-medium text-white">{post.title}</span>
+            <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="font-semibold text-white hover:underline">
+              {getPostAuthorHandle(post)}
+            </Link>
+            {' '}
+            <span className="text-white">{post.title}</span>
             {post.description && (
-              <span className="text-zinc-400"> — {post.description}</span>
+              <span className="text-zinc-400"> {post.description}</span>
             )}
           </p>
           {post.tags.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-2.5">
-              {post.tags.slice(0, 5).map((t) => (
-                <span key={t} className="text-xs text-zinc-600">#{t}</span>
+            <p className="mt-1 text-sm">
+              {post.tags.slice(0, 3).map((t, i) => (
+                <span key={t} className="text-blue-400 hover:underline cursor-pointer">
+                  #{t}{i < Math.min(post.tags.length, 3) - 1 ? ' ' : ''}
+                </span>
               ))}
-            </div>
+            </p>
           )}
         </div>
+        
+        {/* Comments preview */}
+        {totalCommentCount > 0 && (
+          <button 
+            onClick={() => setShowComments(true)}
+            className="px-4 pb-4 text-sm text-zinc-500 hover:text-zinc-400 transition-colors"
+          >
+            View all {totalCommentCount} comments
+          </button>
+        )}
 
         {/* Comment preview */}
         <button
@@ -729,116 +881,116 @@ export default function CommunityGallery() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] px-4 pb-16 pt-24 sm:px-6">
-      {/* Header */}
-      <div className="mx-auto mb-8 max-w-[600px]">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">Community</h1>
-            <p className="mt-1 text-sm text-zinc-500">Real builds, straight from the garage.</p>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* Instagram-style Stories Bar */}
+      {!loading && posts.length > 0 && (
+        <StoriesBar 
+          users={filteredPosts.slice(0, 15).map(p => ({
+            name: p.vehicle.name || p.vehicleLabel,
+            handle: getPostAuthorHandle(p),
+            hasPost: true,
+            image: resolvedImageMap[p.heroImage]
+          }))}
+          onSelectUser={(handle) => {
+            // Could filter by user or navigate to profile
+            window.location.href = `/community/profile/${handle}`
+          }}
+        />
+      )}
+
+      {/* Instagram-style Header */}
+      <div className="sticky top-0 z-20 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-[#1e1e24]/50 px-4 py-3">
+        <div className="flex items-center justify-between max-w-[480px] mx-auto">
+          <h1 className="text-xl font-bold tracking-tight text-white font-sans">Modvora</h1>
+          <div className="flex items-center gap-3">
             <NotificationBell />
             {isLoggedIn ? (
-              <Link href="/dashboard/publish" className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500">
-                Publish
+              <Link href="/dashboard/publish" className="text-white hover:text-zinc-400 transition-colors">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-current" strokeWidth={2}>
+                  <rect x="3" y="3" width="18" height="18" rx="3" />
+                  <line x1="12" y1="8" x2="12" y2="16" />
+                  <line x1="8" y1="12" x2="16" y2="12" />
+                </svg>
               </Link>
             ) : (
-              <Link href="/signin?from=/dashboard/publish" className="rounded-xl border border-[#2a2a35] bg-[#18181f] px-4 py-2 text-sm font-medium text-zinc-400 transition-colors hover:border-purple-500/40 hover:text-white">
-                Sign in to Publish
+              <Link href="/signin" className="text-sm font-medium text-white hover:text-zinc-400 transition-colors">
+                Log In
               </Link>
             )}
           </div>
         </div>
       </div>
 
-      {/* Search + Sort + Tag filter */}
-      <div className="mx-auto mb-5 max-w-[600px] space-y-3">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <svg viewBox="0 0 24 24" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 fill-none stroke-zinc-500" strokeWidth={2}>
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search builds, tags, or people…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-[#1e1e24] bg-[#0e0e12] py-2 pl-9 pr-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-zinc-600 transition-colors"
-            />
-          </div>
+      {/* Search bar - minimal */}
+      <div className="px-4 py-3 max-w-[480px] mx-auto">
+        <div className="relative">
+          <svg viewBox="0 0 24 24" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 fill-none stroke-zinc-500" strokeWidth={2}>
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-[#1e1e24] bg-[#18181f] py-2 pl-9 pr-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-zinc-600 transition-colors"
+          />
+        </div>
+        
+        {/* Filter chips */}
+        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setSortBy('newest')}
-            className={`px-3 py-2 text-xs font-medium transition-colors ${sortBy === 'newest' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${sortBy === 'newest' ? 'bg-white text-black' : 'bg-[#18181f] text-zinc-400 hover:text-white'}`}
           >
             Newest
           </button>
           <button
             onClick={() => setSortBy('liked')}
-            className={`px-3 py-2 text-xs font-medium transition-colors ${sortBy === 'liked' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${sortBy === 'liked' ? 'bg-white text-black' : 'bg-[#18181f] text-zinc-400 hover:text-white'}`}
           >
-            Top
+            Popular
           </button>
+          {trendingTags.slice(0, 4).map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setFilterTag(filterTag === tag ? '' : tag)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${filterTag === tag ? 'bg-purple-500 text-white' : 'bg-[#18181f] text-zinc-400 hover:text-white'}`}
+            >
+              #{tag}
+            </button>
+          ))}
         </div>
-
-        {/* Trending tags */}
-        {trendingTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {filterTag && (
-              <button
-                onClick={() => setFilterTag('')}
-                className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors"
-              >
-                #{filterTag} ✕
-              </button>
-            )}
-            {trendingTags.filter((t) => t !== filterTag).map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setFilterTag(tag)}
-                className="text-xs text-zinc-600 transition-colors hover:text-zinc-400"
-              >
-                #{tag}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Feed */}
-      <div className="mx-auto max-w-[600px] space-y-6">
+      {/* Instagram-style Feed */}
+      <div className="mx-auto max-w-[480px] divide-y divide-[#1e1e24]">
         {loading ? (
-          // Skeleton loaders while posts fetch
+          // Instagram-style skeletons
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-[24px] border border-[#1e1e24] bg-[#111116] overflow-hidden">
-              {/* Image skeleton */}
-              <div className="skeleton h-52 w-full" />
-              <div className="p-5 space-y-3">
-                {/* Author row */}
-                <div className="flex items-center gap-2">
-                  <div className="skeleton h-8 w-8 rounded-full" />
-                  <div className="space-y-1.5">
-                    <div className="skeleton h-3 w-28 rounded-full" />
-                    <div className="skeleton h-2.5 w-20 rounded-full" />
-                  </div>
-                </div>
-                {/* Title */}
-                <div className="skeleton h-4 w-3/4 rounded-full" />
-                {/* Description lines */}
-                <div className="skeleton h-3 w-full rounded-full" />
-                <div className="skeleton h-3 w-5/6 rounded-full" />
-                {/* Tags */}
-                <div className="flex gap-2 pt-1">
-                  <div className="skeleton h-5 w-14 rounded-full" />
-                  <div className="skeleton h-5 w-16 rounded-full" />
-                  <div className="skeleton h-5 w-12 rounded-full" />
-                </div>
+            <div key={i} className="pb-4">
+              {/* Header skeleton */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="skeleton h-8 w-8 rounded-full" />
+                <div className="skeleton h-3 w-24 rounded-full" />
+              </div>
+              {/* Image skeleton - Instagram aspect */}
+              <div className="skeleton aspect-[4/5] w-full" />
+              {/* Actions skeleton */}
+              <div className="flex gap-4 px-4 py-3">
+                <div className="skeleton h-6 w-6 rounded-full" />
+                <div className="skeleton h-6 w-6 rounded-full" />
+                <div className="skeleton h-6 w-6 rounded-full" />
+              </div>
+              {/* Caption skeleton */}
+              <div className="px-4 space-y-2">
+                <div className="skeleton h-3 w-32 rounded-full" />
+                <div className="skeleton h-3 w-48 rounded-full" />
               </div>
             </div>
           ))
         ) : filteredPosts.length === 0 && posts.length === 0 ? (
           <EmptyState />
         ) : filteredPosts.length === 0 ? (
-          <div className="rounded-[24px] border border-dashed border-[#2a2a30] bg-[#101014] p-10 text-center">
+          <div className="p-10 text-center">
             <p className="text-sm text-zinc-500">No posts match your search.</p>
           </div>
         ) : (
