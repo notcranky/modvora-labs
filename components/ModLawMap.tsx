@@ -3,6 +3,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { MOD_LAWS, type StateLaws } from '@/lib/mod-laws'
 
+// ─── AI Chat Types ──────────────────────────────────────────────────────────
+
+type ChatMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  isLoading?: boolean
+  sources?: { state: string; relevantField: string }[]
+  relatedQuestions?: string[]
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function strictnessColor(s: StateLaws['strictness']) {
@@ -332,6 +343,193 @@ function Legend() {
   )
 }
 
+// ─── AI Chat Component ───────────────────────────────────────────────────────
+
+function AiLawChat({ selectedState }: { selectedState: string | null }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: "👋 Ask me anything about car mod laws!\n\n**Examples:**\n• Is underglow legal in Texas?\n• What are the tint laws in California?\n• Which states are most lenient?\n• Compare Texas vs Florida"
+    }
+  ])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
+
+  // Pre-fill with selected state
+  useEffect(() => {
+    if (selectedState && !input && messages.length === 1) {
+      const stateName = MOD_LAWS[selectedState]?.state
+      if (stateName) {
+        setInput(`Tell me about mod laws in ${stateName}`)
+      }
+    }
+  }, [selectedState])
+
+  async function sendMessage() {
+    if (!input.trim() || isLoading) return
+    
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim()
+    }
+    
+    setMessages(prev => [...prev, userMsg])
+    setInput('')
+    setIsLoading(true)
+
+    // Add loading message
+    const loadingId = (Date.now() + 1).toString()
+    setMessages(prev => [...prev, {
+      id: loadingId,
+      role: 'assistant',
+      content: '...',
+      isLoading: true
+    }])
+
+    try {
+      const res = await fetch('/api/mod-law-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userMsg.content })
+      })
+      
+      const data = await res.json()
+      
+      setMessages(prev => prev.filter(m => m.id !== loadingId))
+      
+      if (data.error) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `Sorry, I had trouble: ${data.error}`
+        }])
+      } else {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: data.answer,
+          sources: data.sources,
+          relatedQuestions: data.relatedQuestions
+        }])
+      }
+    } catch (err) {
+      setMessages(prev => prev.filter(m => m.id !== loadingId))
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.'
+      }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function handleQuickQuestion(question: string) {
+    setInput(question)
+    // Auto-send after a brief delay to show the user what was selected
+    setTimeout(() => {
+      const fakeEvent = { preventDefault: () => {} }
+      sendMessage()
+    }, 100)
+  }
+
+  return (
+    <div className="rounded-2xl border border-purple-500/20 bg-[#0d0d0f] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-purple-500/20 bg-purple-500/10 px-4 py-3">
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/20">
+          <span className="text-sm">🤖</span>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-white">Mod Law AI</h3>
+          <p className="text-xs text-zinc-500">Ask about tint, exhaust, underglow & more</p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="h-[320px] overflow-y-auto p-4 space-y-4">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm ${
+              msg.role === 'user' 
+                ? 'bg-purple-600 text-white rounded-br-md' 
+                : 'bg-[#1a1a20] text-zinc-300 rounded-bl-md border border-[#2a2a30]'
+            }`}>
+              {msg.isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500/30 border-t-purple-500" />
+                  <span className="text-zinc-500">Thinking...</span>
+                </div>
+              ) : (
+                <div className="whitespace-pre-wrap">{msg.content}</div>
+              )}
+              
+              {/* Related questions */}
+              {msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {msg.relatedQuestions.slice(0, 3).map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleQuickQuestion(q.replace(/\[state\]/, MOD_LAWS[selectedState || 'CA']?.state || 'California'))}
+                      className="text-xs text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 px-2 py-1 rounded-full transition-colors"
+                    >
+                      {q.replace(/\[state\]/, MOD_LAWS[selectedState || 'CA']?.state || 'California')}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-[#2a2a30] p-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Ask about mod laws..."
+            className="flex-1 rounded-xl border border-[#2a2a35] bg-[#111116] px-4 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-purple-500 transition-colors"
+          />
+          <button
+            onClick={sendMessage}
+            disabled={isLoading || !input.trim()}
+            className="rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? '...' : 'Ask'}
+          </button>
+        </div>
+        
+        {/* Quick questions */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {['Most lenient states?', 'Where are straight pipes legal?', 'Emissions-free states?'].map((q) => (
+            <button
+              key={q}
+              onClick={() => handleQuickQuestion(q)}
+              className="text-xs text-zinc-500 hover:text-zinc-300 bg-[#1a1a20] hover:bg-[#25252c] px-3 py-1.5 rounded-full border border-[#2a2a30] transition-colors"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── main component ──────────────────────────────────────────────────────────
 
 export default function ModLawMap() {
@@ -340,23 +538,30 @@ export default function ModLawMap() {
   const selectedLaws = selected ? MOD_LAWS[selected] : null
 
   return (
-    <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
-      {/* Left — map */}
-      <div className="min-w-0 shrink-0">
-        <div className="overflow-x-auto rounded-2xl border border-[#2a2a30] bg-[#0d0d0f] p-5 sm:p-6">
-          <UsaMap selected={selected} onSelect={setSelected} />
-          <Legend />
-        </div>
+    <div className="space-y-8">
+      {/* AI Chat — full width at top */}
+      <div className="max-w-3xl">
+        <AiLawChat selectedState={selected} />
       </div>
+      
+      <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
+        {/* Left — map */}
+        <div className="min-w-0 shrink-0">
+          <div className="overflow-x-auto rounded-2xl border border-[#2a2a30] bg-[#0d0d0f] p-5 sm:p-6">
+            <UsaMap selected={selected} onSelect={setSelected} />
+            <Legend />
+          </div>
+        </div>
 
-      {/* Right — detail */}
-      <div className="w-full xl:min-w-[380px] xl:max-w-[440px]">
-        <div className="rounded-2xl border border-[#2a2a30] bg-[#0d0d0f] p-5 sm:p-6">
-          {selectedLaws ? (
-            <DetailPanel laws={selectedLaws} />
-          ) : (
-            <EmptyState />
-          )}
+        {/* Right — detail */}
+        <div className="w-full xl:min-w-[380px] xl:max-w-[440px]">
+          <div className="rounded-2xl border border-[#2a2a30] bg-[#0d0d0f] p-5 sm:p-6">
+            {selectedLaws ? (
+              <DetailPanel laws={selectedLaws} />
+            ) : (
+              <EmptyState />
+            )}
+          </div>
         </div>
       </div>
     </div>
