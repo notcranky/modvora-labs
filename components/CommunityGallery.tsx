@@ -31,6 +31,10 @@ import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from
 import { useResolvedImageMap } from '@/lib/local-images'
 import { loadVehicles } from '@/lib/garage'
 import { motion, AnimatePresence } from 'framer-motion'
+import { PostCardSkeleton, FeedSkeleton } from '@/components/ui/Skeleton'
+import OfflineIndicator from '@/components/OfflineIndicator'
+import { StreakBadge, LevelBadge } from '@/components/GamificationBadge'
+import { getConnectionQuality } from '@/lib/offline'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -418,7 +422,16 @@ function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts, comments }: Bu
     setLoading(false)
   }, [])
 
-  if (loading) return <div className="animate-pulse h-48 bg-[#1e1e24] rounded-2xl" />
+  if (loading) return (
+    <div className="space-y-4">
+      <div className="animate-pulse h-48 bg-[#1e1e24] rounded-2xl" />
+      <div className="flex gap-4">
+        <div className="animate-pulse h-4 w-20 bg-[#2a2a30] rounded" />
+        <div className="animate-pulse h-4 w-24 bg-[#2a2a30] rounded" />
+        <div className="animate-pulse h-4 w-16 bg-[#2a2a30] rounded" />
+      </div>
+    </div>
+  )
   if (!current) return null
 
   const post = posts.find(p => p.id === current.buildId)
@@ -529,19 +542,7 @@ function FollowingFeed(props: FollowingFeedProps) {
   }, [posts])
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
-              <div className="skeleton h-8 w-8 rounded-full" />
-              <div className="skeleton h-3 w-24 rounded-full" />
-            </div>
-            <div className="skeleton aspect-square w-full" />
-          </div>
-        ))}
-      </div>
-    )
+    return <FeedSkeleton count={3} />
   }
 
   if (followedPosts.length === 0) {
@@ -1052,28 +1053,7 @@ export default function CommunityGallery() {
         {activeTab === 'feed' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
-                    <div className="skeleton h-8 w-8 rounded-full" />
-                    <div className="skeleton h-3 w-24 rounded-full" />
-                  </div>
-                  <div className="skeleton aspect-square w-full" />
-                  <div className="flex items-center justify-between px-3 py-2">
-                    <div className="flex gap-1">
-                      <div className="skeleton h-6 w-6 rounded-full" />
-                      <div className="skeleton h-6 w-6 rounded-full" />
-                      <div className="skeleton h-6 w-6 rounded-full" />
-                    </div>
-                    <div className="skeleton h-6 w-6 rounded-full" />
-                  </div>
-                  <div className="px-4 pb-4 space-y-2">
-                    <div className="skeleton h-3 w-20 rounded-full" />
-                    <div className="skeleton h-3 w-32 rounded-full" />
-                    <div className="skeleton h-3 w-48 rounded-full" />
-                  </div>
-                </div>
-              ))
+              <FeedSkeleton count={6} />
             ) : filteredPosts.length === 0 && posts.length === 0 ? (
               <EmptyState />
             ) : filteredPosts.length === 0 ? (
