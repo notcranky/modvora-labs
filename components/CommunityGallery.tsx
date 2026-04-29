@@ -276,6 +276,10 @@ interface PostCardProps {
 
 function PostCard(props: PostCardProps) {
   const { post, resolvedImage, liked, saved, likeCount, comments, defaultAuthor, isOwner, isVerified, verifiedType, earlySupporter, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
+  
+  // Debug: log badge props
+  console.log(`[PostCard] ${post.title}: isVerified=${isVerified}, verifiedType=${verifiedType}`)
+  
   const [showComments, setShowComments] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
