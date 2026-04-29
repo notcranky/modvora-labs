@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle, loadCommunityPosts } from '@/lib/community'
-import { getPostAuthorUsername, getPostAuthorHandle } from '@/lib/profiles'
+import { getPostAuthorUsername, getPostAuthorHandle, isFollowing, getFollowedUsernames } from '@/lib/profiles'
 import NotificationBell from '@/components/NotificationBell'
 import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
@@ -740,6 +740,93 @@ function EmptyState() {
   )
 }
 
+// ── FollowingFeed ─────────────────────────────────────────────────────────────
+
+interface FollowingFeedProps {
+  posts: CommunityPostWithVehicle[]
+  likes: Record<string, boolean>
+  saves: Record<string, boolean>
+  likeCounts: Record<string, number>
+  comments: Record<string, Comment[]>
+  tagCounts: Record<string, number>
+  commenterName: string
+  ownedVehicleIds: Set<string>
+  ownedPostIds: Set<string>
+  commentLikedIds: Set<string>
+  commentLikeCounts: Record<string, number>
+  resolvedImageMap: Record<string, string>
+  loading: boolean
+  onLike: (postId: string) => void
+  onSave: (postId: string) => void
+  onAddComment: (postId: string, text: string, author: string) => void
+  onNameChange: (name: string) => void
+  onLikeComment: (postId: string, commentId: string, commentAuthor: string, commentText: string) => void
+  onReplyToComment: (postId: string, parentId: string, text: string, author: string, parentAuthor: string) => void
+}
+
+function FollowingFeed({ posts, likes, saves, likeCounts, comments, tagCounts, commenterName, ownedVehicleIds, ownedPostIds, commentLikedIds, commentLikeCounts, resolvedImageMap, loading, onLike, onSave, onAddComment, onNameChange, onLikeComment, onReplyToComment }: FollowingFeedProps) {
+  const followedPosts = useMemo(() => {
+    const followed = getFollowedUsernames()
+    return posts.filter(p => followed.has(getPostAuthorUsername(p)))
+  }, [posts])
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
+              <div className="skeleton h-8 w-8 rounded-full" />
+              <div className="skeleton h-3 w-24 rounded-full" />
+            </div>
+            <div className="skeleton aspect-square w-full" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (followedPosts.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="text-4xl mb-4">👥</div>
+        <h3 className="text-xl font-semibold text-white mb-2">Not following anyone yet</h3>
+        <p className="text-zinc-500 mb-6">Follow builders to see their posts here</p>
+        <Link href="/community/me" className="rounded-xl bg-purple-600 px-5 py-3 font-semibold text-white hover:bg-purple-500">
+          Find Builders
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {followedPosts.map((post) => (
+        <PostCard
+          key={post.id}
+          post={post}
+          resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
+          liked={!!likes[post.id]}
+          saved={!!saves[post.id]}
+          likeCount={likeCounts[post.id] ?? 0}
+          comments={comments[post.id] ?? []}
+          tagCounts={tagCounts}
+          defaultAuthor={commenterName}
+          isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
+          commentLikedIds={commentLikedIds}
+          commentLikeCounts={commentLikeCounts}
+          onLike={() => onLike(post.id)}
+          onSave={() => onSave(post.id)}
+          onAddComment={(text, author) => onAddComment(post.id, text, author)}
+          onAuthorChange={onNameChange}
+          onLikeComment={(commentId, commentAuthor, commentText) => onLikeComment(post.id, commentId, commentAuthor, commentText)}
+          onReplyToComment={(parentId, text, author, parentAuthor) => onReplyToComment(post.id, parentId, text, author, parentAuthor)}
+        />
+      ))}
+    </div>
+  )
+}
+
 // ── CommunityGallery ──────────────────────────────────────────────────────────
 
 export default function CommunityGallery() {
@@ -758,6 +845,7 @@ export default function CommunityGallery() {
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [activeTab, setActiveTab] = useState<'feed' | 'rankings' | 'following'>('feed')
 
   useEffect(() => {
     // Check if user is logged in by looking for auth cookie
@@ -928,8 +1016,28 @@ export default function CommunityGallery() {
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <div className="px-4 py-4 max-w-7xl mx-auto">
+      {/* Navigation Tabs */}
+      <div className="px-4 py-2 max-w-7xl mx-auto border-b border-[#1e1e24]/50">
+        <div className="flex items-center gap-1">
+          {(['feed', 'rankings', 'following'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`relative px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              {tab === 'feed' && '📰 Feed'}
+              {tab === 'rankings' && '🏆 Rankings'}
+              {tab === 'following' && '👥 Following'}
+              {activeTab === tab && (
+                <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search & Filters - Only on Feed */}
+      {activeTab === 'feed' && <div className="px-4 py-4 max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div className="relative w-full sm:w-72">
             <svg viewBox="0 0 24 24" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 fill-none stroke-zinc-500" strokeWidth={2}>
@@ -968,70 +1076,102 @@ export default function CommunityGallery() {
             ))}
           </div>
         </div>
-      </div>
+      </div>}
 
-      {/* Responsive Feed Grid */}
+      {/* Tab Content */}
       <div className="px-4 pb-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          // Grid skeletons
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden">
-              {/* Header skeleton */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
-                <div className="skeleton h-8 w-8 rounded-full" />
-                <div className="skeleton h-3 w-24 rounded-full" />
-              </div>
-              {/* Image skeleton - Square aspect for grid */}
-              <div className="skeleton aspect-square w-full" />
-              {/* Actions skeleton */}
-              <div className="flex items-center justify-between px-3 py-2">
-                <div className="flex gap-1">
-                  <div className="skeleton h-6 w-6 rounded-full" />
-                  <div className="skeleton h-6 w-6 rounded-full" />
-                  <div className="skeleton h-6 w-6 rounded-full" />
+        {/* Feed Tab */}
+        {activeTab === 'feed' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-[#111116] rounded-2xl border border-[#1e1e24] overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1e24]/50">
+                    <div className="skeleton h-8 w-8 rounded-full" />
+                    <div className="skeleton h-3 w-24 rounded-full" />
+                  </div>
+                  <div className="skeleton aspect-square w-full" />
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <div className="flex gap-1">
+                      <div className="skeleton h-6 w-6 rounded-full" />
+                      <div className="skeleton h-6 w-6 rounded-full" />
+                      <div className="skeleton h-6 w-6 rounded-full" />
+                    </div>
+                    <div className="skeleton h-6 w-6 rounded-full" />
+                  </div>
+                  <div className="px-4 pb-4 space-y-2">
+                    <div className="skeleton h-3 w-20 rounded-full" />
+                    <div className="skeleton h-3 w-32 rounded-full" />
+                    <div className="skeleton h-3 w-48 rounded-full" />
+                  </div>
                 </div>
-                <div className="skeleton h-6 w-6 rounded-full" />
+              ))
+            ) : filteredPosts.length === 0 && posts.length === 0 ? (
+              <EmptyState />
+            ) : filteredPosts.length === 0 ? (
+              <div className="col-span-full p-10 text-center">
+                <p className="text-sm text-zinc-500">No posts match your search.</p>
               </div>
-              {/* Caption skeleton */}
-              <div className="px-4 pb-4 space-y-2">
-                <div className="skeleton h-3 w-20 rounded-full" />
-                <div className="skeleton h-3 w-32 rounded-full" />
-                <div className="skeleton h-3 w-48 rounded-full" />
-              </div>
-            </div>
-          ))
-        ) : filteredPosts.length === 0 && posts.length === 0 ? (
-          <EmptyState />
-        ) : filteredPosts.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-sm text-zinc-500">No posts match your search.</p>
+            ) : (
+              filteredPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
+                  liked={!!likes[post.id]}
+                  saved={!!saves[post.id]}
+                  likeCount={likeCounts[post.id] ?? 0}
+                  comments={comments[post.id] ?? []}
+                  tagCounts={tagCounts}
+                  defaultAuthor={commenterName}
+                  isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
+                  commentLikedIds={commentLikedIds}
+                  commentLikeCounts={commentLikeCounts}
+                  onLike={() => handleLike(post.id)}
+                  onSave={() => handleSave(post.id)}
+                  onAddComment={(text, author) => handleAddComment(post.id, text, author)}
+                  onAuthorChange={handleNameChange}
+                  onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
+                  onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
+                />
+              ))
+            )}
           </div>
-        ) : (
-          filteredPosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
-              liked={!!likes[post.id]}
-              saved={!!saves[post.id]}
-              likeCount={likeCounts[post.id] ?? 0}
-              comments={comments[post.id] ?? []}
-              tagCounts={tagCounts}
-              defaultAuthor={commenterName}
-              isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
-              commentLikedIds={commentLikedIds}
-              commentLikeCounts={commentLikeCounts}
-              onLike={() => handleLike(post.id)}
-              onSave={() => handleSave(post.id)}
-              onAddComment={(text, author) => handleAddComment(post.id, text, author)}
-              onAuthorChange={handleNameChange}
-              onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
-              onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
-            />
-          ))
         )}
-        </div>
+
+        {/* Rankings Tab */}
+        {activeTab === 'rankings' && (
+          <div className="text-center py-16">
+            <div className="text-4xl mb-4">🏆</div>
+            <h3 className="text-xl font-semibold text-white mb-2">Rankings Coming Soon</h3>
+            <p className="text-zinc-500">Build of the Week, Build Battles, and Leaderboards</p>
+          </div>
+        )}
+
+        {/* Following Tab */}
+        {activeTab === 'following' && (
+          <FollowingFeed 
+            posts={posts}
+            likes={likes}
+            saves={saves}
+            likeCounts={likeCounts}
+            comments={comments}
+            tagCounts={tagCounts}
+            commenterName={commenterName}
+            ownedVehicleIds={ownedVehicleIds}
+            ownedPostIds={ownedPostIds}
+            commentLikedIds={commentLikedIds}
+            commentLikeCounts={commentLikeCounts}
+            resolvedImageMap={resolvedImageMap}
+            loading={loading}
+            onLike={handleLike}
+            onSave={handleSave}
+            onAddComment={handleAddComment}
+            onNameChange={handleNameChange}
+            onLikeComment={handleLikeComment}
+            onReplyToComment={handleReplyToComment}
+          />
+        )}
       </div>
     </div>
   )
