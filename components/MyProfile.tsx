@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, loadCommunityPosts, CommunityPostWithVehicle } from '@/lib/community'
 import { loadVehicles } from '@/lib/garage'
 import { toHandle } from '@/lib/profiles'
+import HPBadge, { getStoredHP, storeHP } from '@/components/HPBadge'
 import { useResolvedImageMap } from '@/lib/local-images'
 
 const LIKES_KEY = 'modvora_likes'
@@ -73,6 +74,10 @@ export default function MyProfile() {
   const [editPhoto, setEditPhoto] = useState<string>('')
   const [editBio, setEditBio] = useState('')
   const [handleError, setHandleError] = useState('')
+  const [editHP, setEditHP] = useState<string>('')
+  const [editCrankHP, setEditCrankHP] = useState<string>('')
+  const [hp, setHp] = useState<number | null>(null)
+  const [crankHp, setCrankHp] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -91,6 +96,9 @@ export default function MyProfile() {
       setCommenterHandle(handle)
       setProfilePhoto(photo)
       setBio(storedBio)
+      const storedHP = getStoredHP()
+      setHp(storedHP.whp)
+      setCrankHp(storedHP.crank)
       setLoaded(true)
     })
   }, [])
@@ -100,6 +108,8 @@ export default function MyProfile() {
     setEditHandle(commenterHandle)
     setEditPhoto(profilePhoto)
     setEditBio(bio)
+    setEditHP(hp?.toString() || '')
+    setEditCrankHP(crankHp?.toString() || '')
     setHandleError('')
     setEditing(true)
   }
@@ -139,6 +149,12 @@ export default function MyProfile() {
       else localStorage.removeItem('modvora_profile_photo')
       if (editBio.trim()) localStorage.setItem('modvora_profile_bio', editBio.trim())
       else localStorage.removeItem('modvora_profile_bio')
+      // Save HP
+      const whpNum = editHP ? parseInt(editHP, 10) : null
+      const crankNum = editCrankHP ? parseInt(editCrankHP, 10) : null
+      storeHP(whpNum && whpNum > 0 ? whpNum : null, crankNum && crankNum > 0 ? crankNum : null)
+      setHp(whpNum && whpNum > 0 ? whpNum : null)
+      setCrankHp(crankNum && crankNum > 0 ? crankNum : null)
     } catch {}
     setEditing(false)
   }
@@ -188,7 +204,10 @@ export default function MyProfile() {
           </div>
 
           <div className="min-w-0 flex-1 pt-1">
-            <h1 className={`text-2xl font-bold ${commenterName ? 'text-white' : 'text-zinc-500'}`}>{displayName}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className={`text-2xl font-bold ${commenterName ? 'text-white' : 'text-zinc-500'}`}>{displayName}</h1>
+              <HPBadge hp={hp} crankHP={crankHp} size="md" />
+            </div>
             <p className="mt-0.5 text-sm text-zinc-500">@{displayHandle}</p>
             {bio && <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-400">{bio}</p>}
             {loaded && (
@@ -346,6 +365,40 @@ export default function MyProfile() {
                   className="w-full resize-none rounded-xl border border-[#2a2a35] bg-[#18181f] px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-purple-500/50 transition-colors"
                 />
                 <p className="mt-0.5 text-right text-[11px] text-zinc-600">{editBio.length}/160</p>
+              </div>
+
+              {/* HP Badge */}
+              <div className="mb-4 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
+                <label className="mb-1.5 block text-xs font-medium text-orange-400">🔥 Horsepower Badge</label>
+                <p className="mb-3 text-[11px] text-zinc-500">Display your build's power. Shows as a badge next to your name.</p>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-zinc-500">WHP</label>
+                    <input
+                      type="number"
+                      value={editHP}
+                      onChange={(e) => setEditHP(e.target.value)}
+                      placeholder="340"
+                      min="0"
+                      max="5000"
+                      className="w-full rounded-xl border border-[#2a2a35] bg-[#18181f] px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-orange-500/50 transition-colors"
+                    />
+                    <p className="mt-0.5 text-[10px] text-zinc-600">Wheel HP (preferred)</p>
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-zinc-500">Crank HP</label>
+                    <input
+                      type="number"
+                      value={editCrankHP}
+                      onChange={(e) => setEditCrankHP(e.target.value)}
+                      placeholder="400"
+                      min="0"
+                      max="5000"
+                      className="w-full rounded-xl border border-[#2a2a35] bg-[#18181f] px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-orange-500/50 transition-colors"
+                    />
+                    <p className="mt-0.5 text-[10px] text-zinc-600">If no WHP</p>
+                  </div>
+                </div>
               </div>
 
               {/* Handle */}

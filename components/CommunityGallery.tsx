@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle, loadCommunityPosts } from '@/lib/community'
 import { getPostAuthorUsername, getPostAuthorHandle } from '@/lib/profiles'
 import NotificationBell from '@/components/NotificationBell'
+import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
 import { useResolvedImageMap } from '@/lib/local-images'
 import { loadVehicles } from '@/lib/garage'
@@ -412,9 +413,10 @@ function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagC
             {initials}
           </Link>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="truncate text-sm font-semibold text-white hover:text-purple-400 transition-colors">{authorName}</Link>
               <span className="shrink-0 text-xs text-zinc-600">@{getPostAuthorHandle(post)}</span>
+              {isOwner && <HPBadge hp={getStoredHP().whp} crankHP={getStoredHP().crank} size="sm" showLabel={false} />}
             </div>
             <p className="truncate text-xs text-zinc-500">{post.vehicleLabel} · {timeAgo(post.publishedAt ?? post.updatedAt)}</p>
           </div>
