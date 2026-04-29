@@ -9,6 +9,7 @@ import StoriesBar from '@/components/StoriesBar'
 import PullToRefresh from '@/components/PullToRefresh'
 import NotificationsCenter from '@/components/NotificationsCenter'
 import { calculateTrendingScore, getActiveStories, type Story } from '@/lib/engagement'
+import LikeButton from '@/components/LikeButton'
 
 // Inline icons (avoiding lucide-react dependency)
 const FlameIcon = () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
@@ -251,14 +252,17 @@ export default function TrendingPage() {
   }
 
   const handleLike = async (postId: string) => {
-    if (!userId) return
+    if (!userId) {
+      alert('Please sign in to like posts')
+      return
+    }
     
-    const isLiked = userLikes.has(postId)
+    const wasLiked = userLikes.has(postId)
     
     // Optimistic update
     setUserLikes(prev => {
       const next = new Set(prev)
-      if (isLiked) next.delete(postId)
+      if (wasLiked) next.delete(postId)
       else next.add(postId)
       return next
     })
@@ -267,15 +271,64 @@ export default function TrendingPage() {
       ...prev,
       [postId]: {
         ...prev[postId],
-        likes: (prev[postId]?.likes || 0) + (isLiked ? -1 : 1)
+        likes: (prev[postId]?.likes || 0) + (wasLiked ? -1 : 1)
       }
     }))
     
-    // Database update
-    if (isLiked) {
-      await supabase.from('likes').delete().eq('user_id', userId).eq('post_id', postId)
-    } else {
-      await supabase.from('likes').insert({ user_id: userId, post_id: postId })
+    try {
+      if (wasLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', userId)
+          .eq('post_id', postId)
+        
+        if (error) throw error
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('likes')
+          .insert({ user_id: userId, post_id: postId })
+        
+        if (error) throw error
+      }
+      
+      // Verify by re-fetching
+      const { count: verifiedCount } = await supabase
+        .from('likes')
+        .select('id', { count: 'exact' })
+        .eq('post_id', postId)
+      
+      setPostStats(prev => ({
+        ...prev,
+        [postId]: {
+          ...prev[postId],
+          likes: verifiedCount || 0
+        }
+      }))
+      
+    } catch (err: any) {
+      console.error('Like failed:', err)
+      
+      // Revert optimistic update
+      setUserLikes(prev => {
+        const next = new Set(prev)
+        if (wasLiked) next.add(postId)
+        else next.delete(postId)
+        return next
+      })
+      
+      setPostStats(prev => ({
+        ...prev,
+        [postId]: {
+          ...prev[postId],
+          likes: (prev[postId]?.likes || 0) + (wasLiked ? 1 : -1)
+        }
+      }))
+      
+      // Show error to user
+      alert(`Failed to ${wasLiked ? 'unlike' : 'like'}: ${err.message}`)
     }
   }
 

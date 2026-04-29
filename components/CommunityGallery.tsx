@@ -848,25 +848,77 @@ export default function CommunityGallery() {
   const resolvedImageMap = useResolvedImageMap(heroImages)
 
   async function handleLike(postId: string) {
+    if (!supabaseUserId) {
+      // Not logged in, use localStorage only
+      const wasLiked = likes[postId]
+      safeWrite(LIKES_KEY, { ...likes, [postId]: !wasLiked })
+      safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: (likeCounts[postId] ?? 0) + (wasLiked ? -1 : 1) })
+      return
+    }
+    
     const wasLiked = likes[postId]
     
     // Optimistic UI update
     setLikes((prev) => ({ ...prev, [postId]: !wasLiked }))
     setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + (wasLiked ? -1 : 1) }))
     
-    if (supabaseUserId) {
-      // Use Supabase - the realtime subscription will update the count for everyone
-      const result = await toggleDbLike(supabaseUserId, postId)
-      // If there was an error (null), revert the optimistic update
-      if (result === null) {
-        console.error('[handleLike] Failed to toggle like - reverting UI')
-        setLikes((prev) => ({ ...prev, [postId]: wasLiked }))
-        setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + (wasLiked ? 1 : -1) }))
-        // Re-fetch actual count to ensure sync
-        const { count } = await supabase.from('likes').select('id', { count: 'exact' }).eq('post_id', postId)
-        setLikeCounts((prev) => ({ ...prev, [postId]: count || 0 }))
+    try {
+      if (wasLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', supabaseUserId)
+          .eq('post_id', postId)
+        
+        if (error) throw error
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('likes')
+          .insert({ user_id: supabaseUserId, post_id: postId })
+        
+        if (error) {
+          // Check if it's a unique constraint violation (already liked)
+          if (error.code === '23505') {
+            console.log('Already liked')
+            setLikes((prev) => ({ ...prev, [postId]: true }))
+          } else {
+            throw error
+          }
+        }
       }
-    } else {
+      
+      // Verify the change
+      const { count } = await supabase
+        .from('likes')
+        .select('id', { count: 'exact' })
+        .eq('post_id', postId)
+      
+      setLikeCounts((prev) => ({ ...prev, [postId]: count || 0 }))
+      
+      // Also verify user's like status
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('user_id', supabaseUserId)
+        .eq('post_id', postId)
+        .maybeSingle()
+      
+      setLikes((prev) => ({ ...prev, [postId]: !!data }))
+      
+    } catch (err: any) {
+      console.error('Like failed:', err)
+      
+      // Revert UI
+      setLikes((prev) => ({ ...prev, [postId]: wasLiked }))
+      setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + (wasLiked ? 1 : -1) }))
+      
+      // Show error
+      alert(`Failed to ${wasLiked ? 'unlike' : 'like'}: ${err.message || 'Unknown error'}`)
+    }
+    
+    if (!wasLiked) {
       // Fallback to localStorage
       safeWrite(LIKES_KEY, { ...likes, [postId]: !wasLiked })
       safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: (likeCounts[postId] ?? 0) + (wasLiked ? -1 : 1) })
