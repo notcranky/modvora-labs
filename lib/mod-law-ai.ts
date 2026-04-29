@@ -7,6 +7,7 @@ export type LawIntent =
   | 'underglow_question'
   | 'straight_pipe_question'
   | 'headlight_question'
+  | 'decorative_lights_question'
   | 'comparison'
   | 'strictness_ranking'
   | 'general_info'
@@ -89,12 +90,19 @@ export function parseLawQuery(query: string): ParsedLawQuery {
     topics.push('emissions')
   }
   
-  // Underglow / decorative lighting
+  // Underglow / neon
   if (lower.includes('underglow') || lower.includes('neon') || lower.includes('led under') || lower.includes('ground effect') ||
-      lower.includes('christmas light') || lower.includes('holiday light') || lower.includes('decorative light') || 
       lower.includes('led strip') || lower.includes('rgb light') || lower.includes('interior light') || lower.includes('mood light')) {
     intent = 'underglow_question'
     topics.push('underglow')
+  }
+  
+  // Christmas/holiday decorative lights (string lights on hood, etc.)
+  if (lower.includes('christmas') || lower.includes('holiday light') || lower.includes('string light') || 
+      lower.includes('tied to') || lower.includes('wrapped around') || lower.includes('tree light') ||
+      lower.includes('festive light') || lower.includes('decorative light on hood') || lower.includes('grille light')) {
+    intent = 'decorative_lights_question'
+    topics.push('decorativeLights')
   }
   
   // Headlights
@@ -123,7 +131,8 @@ export function parseLawQuery(query: string): ParsedLawQuery {
   // If we detected a topic but no specific intent, try to map it
   if (intent === 'unknown' && topics.length > 0 && states.length > 0) {
     // Map topics to intents
-    if (topics.includes('underglow')) intent = 'underglow_question'
+    if (topics.includes('decorativeLights')) intent = 'decorative_lights_question'
+    else if (topics.includes('underglow')) intent = 'underglow_question'
     else if (topics.includes('tint')) intent = 'tint_question'
     else if (topics.includes('straightPipe')) intent = 'straight_pipe_question'
     else if (topics.includes('exhaust')) intent = 'exhaust_question'
@@ -297,6 +306,13 @@ export function answerLawQuery(parsed: ParsedLawQuery): LawAnswer {
       answer += `\n${stateLaw.coloredHeadlights.note}`
       break
       
+    case 'decorative_lights_question':
+      answer = `**${stateLaw.state} Christmas/Holiday Decorative Lights**\n\n`
+      answer += `• **Status:** ${stateLaw.decorativeLights.status === 'legal' ? '✓ Legal' : stateLaw.decorativeLights.status === 'restricted' ? '~ Restricted' : '✕ Illegal'}\n`
+      answer += `\n${stateLaw.decorativeLights.note}`
+      answer += `\n\n💡 **Note:** This refers to string lights, Christmas tree lights, or other decorative lighting tied/wrapped on the exterior (hood, grille, roof). Most states prohibit this while driving as it can distract other drivers and may not be securely mounted.`
+      break
+      
     case 'general_info':
       answer = `**${stateLaw.state} Modification Laws Overview**\n\n`
       answer += `**Strictness Level:** ${stateLaw.strictness}\n\n`
@@ -304,6 +320,7 @@ export function answerLawQuery(parsed: ParsedLawQuery): LawAnswer {
       answer += `• **Emissions:** ${stateLaw.emissions.required ? 'Required' : 'Not required'}\n`
       answer += `• **Straight Pipes:** ${stateLaw.straightPipe.status}\n`
       answer += `• **Underglow:** ${stateLaw.underglow.status}\n`
+      answer += `• **Christmas/Decorative Lights:** ${stateLaw.decorativeLights.status}\n`
       answer += `• **Exhaust:** ${stateLaw.exhaust.limit}`
       break
       
@@ -314,15 +331,10 @@ export function answerLawQuery(parsed: ParsedLawQuery): LawAnswer {
   return {
     answer,
     sources,
-    relatedQuestions: topics.length > 0 ? [
-      `What about ${topics[0]} laws in other states?`,
+    relatedQuestions: [
+      `What about ${topics[0] || 'underglow'} laws in other states?`,
+      `Can I put Christmas lights on my car in ${stateLaw.state}?`,
       `Is straight pipe legal in ${stateLaw.state}?`,
-      `Tell me about emissions testing in ${stateLaw.state}`,
-      `How strict is ${stateLaw.state} compared to California?`
-    ] : [
-      `What about underglow laws in other states?`,
-      `Is straight pipe legal in ${stateLaw.state}?`,
-      `Tell me about emissions testing in ${stateLaw.state}`,
       `How strict is ${stateLaw.state} compared to California?`
     ],
     confidence: 'high'
