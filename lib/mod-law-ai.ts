@@ -50,10 +50,15 @@ const STATE_NAMES: Record<string, string> = Object.fromEntries(
 export function parseLawQuery(query: string): ParsedLawQuery {
   const lower = query.toLowerCase()
   
-  // Extract states mentioned
+  // Extract states mentioned (with word boundaries to avoid false matches)
   const states: string[] = []
   for (const [name, abbr] of Object.entries(STATE_ABBREVS)) {
-    if (lower.includes(name) || lower.includes(abbr.toLowerCase())) {
+    // Check for full state name as a word
+    const nameRegex = new RegExp(`\\b${name.replace(/\s+/g, '\\s+')}\\b`, 'i')
+    // Check for abbreviation as a standalone word (not part of another word)
+    const abbrRegex = new RegExp(`\\b${abbr}\\b`, 'i')
+    
+    if (nameRegex.test(lower) || abbrRegex.test(lower)) {
       if (!states.includes(abbr)) states.push(abbr)
     }
   }
@@ -84,8 +89,10 @@ export function parseLawQuery(query: string): ParsedLawQuery {
     topics.push('emissions')
   }
   
-  // Underglow
-  if (lower.includes('underglow') || lower.includes('neon') || lower.includes('led under') || lower.includes('ground effect')) {
+  // Underglow / decorative lighting
+  if (lower.includes('underglow') || lower.includes('neon') || lower.includes('led under') || lower.includes('ground effect') ||
+      lower.includes('christmas light') || lower.includes('holiday light') || lower.includes('decorative light') || 
+      lower.includes('led strip') || lower.includes('rgb light') || lower.includes('interior light') || lower.includes('mood light')) {
     intent = 'underglow_question'
     topics.push('underglow')
   }
@@ -111,6 +118,18 @@ export function parseLawQuery(query: string): ParsedLawQuery {
     if (states.length >= 2) {
       topics.push('comparison')
     }
+  }
+  
+  // If we detected a topic but no specific intent, try to map it
+  if (intent === 'unknown' && topics.length > 0 && states.length > 0) {
+    // Map topics to intents
+    if (topics.includes('underglow')) intent = 'underglow_question'
+    else if (topics.includes('tint')) intent = 'tint_question'
+    else if (topics.includes('straightPipe')) intent = 'straight_pipe_question'
+    else if (topics.includes('exhaust')) intent = 'exhaust_question'
+    else if (topics.includes('emissions')) intent = 'emissions_question'
+    else if (topics.includes('coloredHeadlights')) intent = 'headlight_question'
+    else intent = 'general_info'
   }
   
   // General if no specific intent but has states
@@ -204,7 +223,11 @@ export function answerLawQuery(parsed: ParsedLawQuery): LawAnswer {
     return {
       answer,
       sources,
-      relatedQuestions: topics.map(t => `Tell me more about ${t} laws`),
+      relatedQuestions: topics.length > 0 ? topics.map(t => `Tell me more about ${t} laws`) : [
+        `Tell me more about ${stateLaws[0]?.state} laws`,
+        `Compare ${stateLaws.map(l => l.state).join(' vs ')} on emissions`,
+        `Which state is better for car mods?`
+      ],
       confidence: 'high'
     }
   }
@@ -291,8 +314,13 @@ export function answerLawQuery(parsed: ParsedLawQuery): LawAnswer {
   return {
     answer,
     sources,
-    relatedQuestions: [
+    relatedQuestions: topics.length > 0 ? [
       `What about ${topics[0]} laws in other states?`,
+      `Is straight pipe legal in ${stateLaw.state}?`,
+      `Tell me about emissions testing in ${stateLaw.state}`,
+      `How strict is ${stateLaw.state} compared to California?`
+    ] : [
+      `What about underglow laws in other states?`,
       `Is straight pipe legal in ${stateLaw.state}?`,
       `Tell me about emissions testing in ${stateLaw.state}`,
       `How strict is ${stateLaw.state} compared to California?`
