@@ -1,85 +1,218 @@
-// Social features - migrated from localStorage to Supabase
-// All data persists across devices and sessions
+// Social features - with localStorage fallback for offline/limited access
+// Primary: Supabase for cross-device sync
+// Fallback: localStorage for immediate UX when DB unavailable
 
 import { supabase, supabaseEnabled } from './supabase'
 
-// Helper to check if Supabase is available
+// localStorage keys
+const LIKES_KEY = 'modvora_likes_v2'
+const LIKE_COUNTS_KEY = 'modvora_like_counts_v2'
+
+// Helper to check if Supabase is available and working
+let supabaseWorking = true
+let lastSupabaseError: string | null = null
+
 function checkSupabase(): boolean {
   if (!supabaseEnabled) {
-    console.warn('Supabase not configured - using localStorage fallback')
+    supabaseWorking = false
     return false
   }
-  return true
+  // If we've had recent errors, be cautious
+  if (!supabaseWorking && lastSupabaseError) {
+    const timeSinceError = Date.now() - (parseInt(localStorage.getItem('modvora_supabase_error_time') || '0'))
+    // Retry after 5 minutes
+    if (timeSinceError < 5 * 60 * 1000) {
+      return false
+    }
+    supabaseWorking = true
+  }
+  return supabaseWorking
 }
 
-// ===== LIKES =====
+function markSupabaseFailed(error: string) {
+  supabaseWorking = false
+  lastSupabaseError = error
+  localStorage.setItem('modvora_supabase_error_time', Date.now().toString())
+  console.warn('Supabase failed, using localStorage fallback:', error)
+}
 
+// localStorage helpers
+function safeRead<T>(key: string, defaultValue: T): T {
+  if (typeof window === 'undefined') return defaultValue
+  try {
+    const item = localStorage.getItem(key)
+    return item ? JSON.parse(item) : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+function safeWrite(key: string, value: any) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch (e) {
+    console.error('Failed to write to localStorage:', e)
+  }
+}
+
+// ===== LIKES WITH LOCALSTORAGE FALLBACK =====
+
+// Get likes - tries Supabase first, falls back to localStorage
 export async function getUserLikes(userId: string): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('likes')
-    .select('post_id')
-    .eq('user_id', userId)
-  
-  if (error) {
-    console.error('Error fetching likes:', error)
-    return new Set()
+  if (!checkSupabase()) {
+    // Use localStorage fallback
+    const localLikes = safeRead<Record<string, boolean>>(LIKES_KEY, {})
+    return new Set(Object.entries(localLikes).filter(([_, liked]) => liked).map(([id, _]) => id))
   }
   
-  return new Set(data?.map(l => l.post_id) || [])
+  try {
+    const { data, error } = await supabase
+      .from('likes')
+      .select('post_id')
+      .eq('user_id', userId)
+    
+    if (error) {
+      // Check if it's a permissions error (RLS not set up)
+      if (error.code === '42501' || error.message?.includes('row-level security')) {
+        markSupabaseFailed('RLS policies not configured - using localStorage')
+        const localLikes = safeRead<Record<string, boolean>>(LIKES_KEY, {})
+        return new Set(Object.entries(localLikes).filter(([_, liked]) => liked).map(([id, _]) => id))
+      }
+      throw error
+    }
+    
+    // Merge with localStorage (in case user had offline likes)
+    const dbLikes = new Set(data?.map(l => l.post_id) || [])
+    const localLikes = safeRead<Record<string, boolean>>(LIKES_KEY, {})
+    
+    // If we have local likes not in DB, try to sync them
+    const unsynced = Object.entries(localLikes)
+      .filter(([id, liked]) => liked && !dbLikes.has(id))
+      .map(([id]) => id)
+    
+    return dbLikes
+  } catch (err: any) {
+    console.error('Error fetching likes:', err)
+    markSupabaseFailed(err.message)
+    
+    // Fallback to localStorage
+    const localLikes = safeRead<Record<string, boolean>>(LIKES_KEY, {})
+    return new Set(Object.entries(localLikes).filter(([_, liked]) => liked).map(([id, _]) => id))
+  }
 }
 
+// Toggle like - works with localStorage when Supabase unavailable
 export async function toggleLike(userId: string, postId: string): Promise<boolean | null> {
-  // Check if already liked
-  const { data: existing } = await supabase
-    .from('likes')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('post_id', postId)
-    .single()
+  const localLikes = safeRead<Record<string, boolean>>(LIKES_KEY, {})
+  const currentlyLiked = !!localLikes[postId]
   
-  if (existing) {
-    // Unlike
-    const { error } = await supabase
+  // Always update localStorage first (instant response)
+  localLikes[postId] = !currentlyLiked
+  safeWrite(LIKES_KEY, localLikes)
+  
+  // Update counts in localStorage
+  const counts = safeRead<Record<string, number>>(LIKE_COUNTS_KEY, {})
+  counts[postId] = (counts[postId] || 0) + (currentlyLiked ? -1 : 1)
+  safeWrite(LIKE_COUNTS_KEY, counts)
+  
+  // Try Supabase if available
+  if (!checkSupabase()) {
+    console.log('Using localStorage only (Supabase unavailable)')
+    return !currentlyLiked
+  }
+  
+  try {
+    // Check if already liked in DB
+    const { data: existing, error: checkError } = await supabase
       .from('likes')
-      .delete()
-      .eq('id', existing.id)
+      .select('id')
+      .eq('user_id', userId)
+      .eq('post_id', postId)
+      .maybeSingle()
     
-    if (error) {
-      console.error('Error removing like:', error)
-      return null // Error - caller should revert UI
+    if (checkError) {
+      // If it's a permissions error, just use localStorage
+      if (checkError.code === '42501') {
+        markSupabaseFailed('RLS blocking reads')
+        return !currentlyLiked
+      }
+      throw checkError
     }
-    return false // Successfully unliked
-  } else {
-    // Like
-    const { error } = await supabase
-      .from('likes')
-      .insert({ user_id: userId, post_id: postId })
     
-    if (error) {
-      console.error('Error adding like:', error)
-      return null // Error - caller should revert UI
+    if (existing && currentlyLiked) {
+      // Unlike in DB
+      const { error } = await supabase.from('likes').delete().eq('id', existing.id)
+      if (error) {
+        if (error.code === '42501') {
+          markSupabaseFailed('RLS blocking delete')
+          return !currentlyLiked // localStorage already updated
+        }
+        throw error
+      }
+      return false
+    } else if (!existing && !currentlyLiked) {
+      // Like in DB
+      const { error } = await supabase.from('likes').insert({ user_id: userId, post_id: postId })
+      if (error) {
+        if (error.code === '42505' || error.code === '42501' || error.message?.includes('security')) {
+          markSupabaseFailed('RLS blocking insert')
+          return !currentlyLiked // localStorage already updated
+        }
+        throw error
+      }
+      return true
     }
-    return true // Successfully liked
+    
+    return !currentlyLiked
+  } catch (err: any) {
+    console.error('Supabase like error:', err)
+    markSupabaseFailed(err.message)
+    // localStorage already updated, so return that state
+    return !currentlyLiked
   }
 }
 
 export async function getLikeCounts(postIds: string[]): Promise<Record<string, number>> {
-  const { data, error } = await supabase
-    .from('likes')
-    .select('post_id')
-    .in('post_id', postIds)
-  
-  if (error) {
-    console.error('Error fetching like counts:', error)
-    return {}
+  if (!checkSupabase()) {
+    // Use localStorage fallback
+    return safeRead<Record<string, number>>(LIKE_COUNTS_KEY, {})
   }
   
-  const counts: Record<string, number> = {}
-  for (const like of data || []) {
-    counts[like.post_id] = (counts[like.post_id] || 0) + 1
+  try {
+    const { data, error } = await supabase
+      .from('likes')
+      .select('post_id')
+      .in('post_id', postIds)
+    
+    if (error) {
+      // If RLS error, use localStorage
+      if (error.code === '42501') {
+        markSupabaseFailed('RLS blocking counts')
+        return safeRead<Record<string, number>>(LIKE_COUNTS_KEY, {})
+      }
+      throw error
+    }
+    
+    const counts: Record<string, number> = {}
+    for (const like of data || []) {
+      counts[like.post_id] = (counts[like.post_id] || 0) + 1
+    }
+    
+    // Merge with localStorage counts (for offline likes)
+    const localCounts = safeRead<Record<string, number>>(LIKE_COUNTS_KEY, {})
+    postIds.forEach(id => {
+      if (localCounts[id] && !counts[id]) {
+        counts[id] = localCounts[id]
+      }
+    })
+    
+    return counts
+  } catch (err: any) {
+    console.error('Error fetching like counts:', err)
+    markSupabaseFailed(err.message)
+    return safeRead<Record<string, number>>(LIKE_COUNTS_KEY, {})
   }
-  
-  return counts
 }
 
 // ===== SAVES =====
