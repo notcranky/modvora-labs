@@ -21,6 +21,19 @@ export interface BuildOfWeek {
 
 const BOTW_KEY = 'modvora_botw_history'
 const CURRENT_BOTW_KEY = 'modvora_botw_current'
+const NOMINATIONS_KEY = 'modvora_botw_nominations'
+const USER_NOMINATIONS_KEY = 'modvora_user_nominations' // Track which posts user nominated this week
+
+export interface Nomination {
+  buildId: string
+  slug: string
+  title: string
+  author: string
+  handle: string
+  heroImage: string
+  count: number
+  weekId: string
+}
 
 // Sample featured builds for demo
 const SEED_BOTW: BuildOfWeek[] = [
@@ -129,6 +142,75 @@ export function isBuildOfWeek(buildId: string): boolean {
   const current = getBuildOfWeek()
   return current?.buildId === buildId
 }
+
+// ---- NOMINATIONS ----
+
+function getNominationWeekId() {
+  // This is just current week (same as getCurrentWeekId)
+  return getCurrentWeekId();
+}
+
+export function getNominations(): Nomination[] {
+  const weekId = getNominationWeekId();
+  const nominations = safeRead<Nomination[]>(NOMINATIONS_KEY, []);
+  return nominations.filter(n => n.weekId === weekId);
+}
+
+export function getNominationCount(buildId: string): number {
+  return getNominations().find(n => n.buildId === buildId)?.count ?? 0;
+}
+
+export function getTopNominees(limit = 10): Nomination[] {
+  return getNominations()
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
+export function canNominate(buildId: string, username: string): boolean {
+  // One vote per user, per week
+  const weekId = getNominationWeekId();
+  const key = `${USER_NOMINATIONS_KEY}:${username}:${weekId}`;
+  const voted = safeRead<string[]>(key, []);
+  return !voted.includes(buildId);
+}
+
+export function nominateForBuildOfWeek(
+  post: CommunityPostWithVehicle,
+  username: string
+) {
+  const weekId = getNominationWeekId();
+  const key = `${USER_NOMINATIONS_KEY}:${username}:${weekId}`;
+  let voted = safeRead<string[]>(key, []);
+  if (voted.includes(post.id)) return false;
+  voted.push(post.id);
+  safeWrite(key, voted);
+  let nominations = safeRead<Nomination[]>(NOMINATIONS_KEY, []);
+  let idx = nominations.findIndex(n => n.weekId === weekId && n.buildId === post.id);
+  if (idx !== -1) {
+    nominations[idx].count++;
+  } else {
+    nominations.push({
+      buildId: post.id,
+      slug: post.slug,
+      title: post.title,
+      author: post.vehicle.name || 'Unknown',
+      handle: post.vehicle.name?.toLowerCase().replace(/\s+/g, '_') || 'unknown',
+      heroImage: post.heroImage || '',
+      weekId,
+      count: 1
+    });
+  }
+  safeWrite(NOMINATIONS_KEY, nominations);
+  return true;
+}
+
+export function resetNominationsForWeek() {
+  const weekId = getNominationWeekId();
+  let nominations = safeRead<Nomination[]>(NOMINATIONS_KEY, []);
+  nominations = nominations.filter(n => n.weekId !== weekId);
+  safeWrite(NOMINATIONS_KEY, nominations);
+}
+
 
 export function formatWeekDisplay(weekId: string): string {
   const [year, week] = weekId.split('-W')

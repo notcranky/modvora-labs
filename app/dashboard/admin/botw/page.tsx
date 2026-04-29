@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle } from '@/lib/community'
-import { getBuildOfWeek, getBuildOfWeekHistory, selectBuildOfWeek, BuildOfWeek, formatWeekDisplay } from '@/lib/build-of-week'
+import { getBuildOfWeek, getBuildOfWeekHistory, selectBuildOfWeek, BuildOfWeek, formatWeekDisplay, Nomination, getTopNominees, getNominations, resetNominationsForWeek } from '@/lib/build-of-week'
 import { getPostAuthorHandle } from '@/lib/profiles'
 
 export default function BuildOfWeekAdmin() {
@@ -14,14 +14,21 @@ export default function BuildOfWeekAdmin() {
   const [selectedPost, setSelectedPost] = useState<CommunityPostWithVehicle | null>(null)
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
+  const [nominees, setNominees] = useState<Nomination[]>([])
+  const [showNominees, setShowNominees] = useState(true)
 
-  useEffect(() => {
+  function loadData() {
     fetchPublishedBuilds().then((fetched) => {
       setPosts(fetched)
       setCurrent(getBuildOfWeek())
       setHistory(getBuildOfWeekHistory().slice(0, 5))
+      setNominees(getTopNominees(10))
       setLoading(false)
     })
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
 
   function handleSelect(post: CommunityPostWithVehicle) {
@@ -34,11 +41,24 @@ export default function BuildOfWeekAdmin() {
     setSaving(true)
     
     const botw = selectBuildOfWeek(selectedPost, reason.trim(), 'admin')
+    
+    // Reset nominations for next week
+    resetNominationsForWeek()
+    
     setCurrent(botw)
     setHistory(prev => [botw, ...prev].slice(0, 5))
+    setNominees([]) // Clear nominees after selection
     setSelectedPost(null)
     setReason('')
     setSaving(false)
+  }
+
+  function handleSelectFromNominee(nominee: Nomination) {
+    const post = posts.find(p => p.id === nominee.buildId)
+    if (post) {
+      setSelectedPost(post)
+      setReason(`Top community nominee with ${nominee.count} nominations`)
+    }
   }
 
   if (loading) {
@@ -103,6 +123,57 @@ export default function BuildOfWeekAdmin() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Top Nominees */}
+        {nominees.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">🏆 Top 10 Nominees</h2>
+              <button 
+                onClick={() => setShowNominees(!showNominees)}
+                className="text-sm text-zinc-500 hover:text-white"
+              >
+                {showNominees ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {showNominees && (
+              <div className="space-y-2">
+                {nominees.map((nominee, i) => (
+                  <div 
+                    key={nominee.buildId}
+                    className="flex items-center gap-4 bg-[#111116] rounded-xl border border-[#1e1e24] p-4 hover:border-[#2a2a35] transition-colors"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1e1e24] text-sm font-bold text-zinc-400">
+                      {i + 1}
+                    </div>
+                    <div className="w-12 h-12 rounded-lg bg-[#1e1e24] flex-shrink-0 overflow-hidden">
+                      {nominee.heroImage && (
+                        <img 
+                          src={nominee.heroImage} 
+                          alt={nominee.title}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-white truncate">{nominee.title}</h3>
+                      <p className="text-xs text-zinc-500">{nominee.author}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-amber-400 font-bold">{nominee.count} votes</span>
+                      <button
+                        onClick={() => handleSelectFromNominee(nominee)}
+                        className="px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-400 text-xs font-medium hover:bg-purple-600 hover:text-white transition-colors"
+                      >
+                        Select
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

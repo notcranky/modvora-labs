@@ -4,6 +4,7 @@ import Link from 'next/link'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle, loadCommunityPosts } from '@/lib/community'
 import { getPostAuthorUsername, getPostAuthorHandle, isFollowing, getFollowedUsernames } from '@/lib/profiles'
+import { nominateForBuildOfWeek, getNominationCount, canNominate } from '@/lib/build-of-week'
 import NotificationBell from '@/components/NotificationBell'
 import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
@@ -499,8 +500,26 @@ function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagC
   const [copied, setCopied] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
   const [heartPos, setHeartPos] = useState({ x: 0, y: 0 })
+  const [nominationCount, setNominationCount] = useState(() => getNominationCount(post.id))
+  const [hasNominated, setHasNominated] = useState(false)
+  const [showNominateConfirm, setShowNominateConfirm] = useState(false)
   const lastTapRef = useRef(0)
   const imageRef = useRef<HTMLDivElement>(null)
+
+  function handleNominate() {
+    const username = defaultAuthor || 'anonymous'
+    if (!canNominate(post.id, username)) {
+      setHasNominated(true)
+      return
+    }
+    const success = nominateForBuildOfWeek(post, username)
+    if (success) {
+      setNominationCount(prev => prev + 1)
+      setHasNominated(true)
+      setShowNominateConfirm(true)
+      setTimeout(() => setShowNominateConfirm(false), 2000)
+    }
+  }
 
   function handleShare() {
     const url = `${window.location.origin}/community/${post.slug}`
@@ -640,6 +659,28 @@ function PostCard({ post, resolvedImage, liked, saved, likeCount, comments, tagC
                 </svg>
               )}
             </button>
+            {/* Nominate for BOTW */}
+            <button
+              onClick={handleNominate}
+              disabled={hasNominated}
+              className={`p-2 rounded-full transition-all relative ${hasNominated ? 'text-amber-400' : 'text-zinc-400 hover:text-amber-400 hover:bg-amber-400/10'}`}
+              aria-label="Nominate for Build of the Week"
+              title={hasNominated ? 'Already nominated this week' : 'Nominate for Build of the Week'}
+            >
+              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-current" strokeWidth={2}>
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              {nominationCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px]">
+                  {nominationCount}
+                </span>
+              )}
+            </button>
+            {showNominateConfirm && (
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap z-10">
+                ⭐ Nominated!
+              </span>
+            )}
           </div>
           <button
             onClick={onSave}
