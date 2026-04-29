@@ -2732,6 +2732,7 @@ export default function Dashboard() {
                 </button>
                 <a href="/dashboard/publish" className="rounded-xl border border-[#2a2a30] px-6 py-3 font-semibold text-zinc-300 transition-colors hover:border-purple-500/40 hover:text-white">Publish a Build</a>
                 <a href="/community" className="rounded-xl border border-[#2a2a30] px-6 py-3 font-medium text-zinc-300 transition-colors hover:border-purple-500/40 hover:text-white">Browse Community</a>
+                <a href="/dashboard/admin/botw" className="rounded-xl border border-amber-500/30 px-6 py-3 font-medium text-amber-300 transition-colors hover:border-amber-500/60 hover:text-white">🏆 Build of the Week</a>
                 <a href="/intake?new=1" className="rounded-xl border border-[#2a2a30] px-6 py-3 font-medium text-zinc-300 transition-colors hover:border-purple-500/40 hover:text-white">Add Another Vehicle</a>
               </div>
             </div>
