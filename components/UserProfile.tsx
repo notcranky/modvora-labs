@@ -7,9 +7,11 @@ import { getPostAuthorUsername, isFollowing, toggleFollow, getFollowerCount, toH
 import { useResolvedImageMap } from '@/lib/local-images'
 import { getVerifiedUsers, getVerifiedStatusByHandle, isOwnerHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 
-function VerifiedBadge({ type = 'free' }: { type?: 'free' | 'paid' | 'admin' }) {
-  const color = type === 'admin' ? '#f59e0b' : type === 'paid' ? '#a855f7' : '#3b82f6'
-  const tooltip = type === 'admin' ? 'Modvora Admin' : type === 'paid' ? 'Verified Builder (Premium)' : 'Verified Builder (1K+ followers)'
+function VerifiedBadge({ type = 'purple' }: { type?: 'purple' | 'gold' | null }) {
+  // Unified badge: purple for verified (paid OR 1K followers), gold for admin
+  if (!type) return null
+  const color = type === 'gold' ? '#f59e0b' : '#a855f7' // gold for admin, purple for verified
+  const tooltip = type === 'gold' ? 'Modvora Admin' : 'Verified Builder'
   
   return (
     <span className="inline-flex items-center justify-center w-5 h-5" title={tooltip}>
@@ -30,7 +32,7 @@ export default function UserProfile({ username }: UserProfileProps) {
   const [followerCount, setFollowerCount] = useState(0)
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
   const [loaded, setLoaded] = useState(false)
-  const [verificationStatus, setVerificationStatus] = useState<{ isVerified: boolean, badgeColor: string, tooltip: string } | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<{ isVerified: boolean, badgeColor: 'purple' | 'gold' | null, tooltip: string } | null>(null)
 
   useEffect(() => {
     fetchPublishedBuilds().then(async (posts) => {
@@ -48,24 +50,38 @@ export default function UserProfile({ username }: UserProfileProps) {
         toHandle(p.handle) === toHandle(username) || toHandle(p.username) === toHandle(username)
       )
       
-      // Check if owner (always verified)
-      const isOwner = isOwnerHandle(username) || isOwnerHandle(displayName)
+      // Check if owner (always verified) — check both username and the name from posts
+      const postAuthorName = posts[0]?.vehicle.name
+      const isOwner = isOwnerHandle(username) || (postAuthorName && isOwnerHandle(postAuthorName))
       
       if (isOwner) {
         setVerificationStatus({
           isVerified: true,
           badgeColor: 'gold',
-          tooltip: 'Modvora Admin',
-          canExpire: false
+          tooltip: 'Modvora Admin'
         })
       } else if (!userProfile) {
         // Try direct lookup if not found in list
         const directProfile = await getVerifiedStatusByHandle(username)
         if (directProfile) {
-          setVerificationStatus(getVerificationStatus(directProfile))
+          const status = getVerificationStatus(directProfile)
+          if (status.isVerified) {
+            setVerificationStatus({
+              isVerified: true,
+              badgeColor: status.badgeColor,
+              tooltip: status.tooltip
+            })
+          }
         }
       } else {
-        setVerificationStatus(getVerificationStatus(userProfile))
+        const status = getVerificationStatus(userProfile)
+        if (status.isVerified) {
+          setVerificationStatus({
+            isVerified: true,
+            badgeColor: status.badgeColor,
+            tooltip: status.tooltip
+          })
+        }
       }
       
       setLoaded(true)
@@ -110,7 +126,7 @@ export default function UserProfile({ username }: UserProfileProps) {
               <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
                 {displayName}
                 {verificationStatus?.isVerified && (
-                  <VerifiedBadge type={verificationStatus.badgeColor === 'gold' ? 'admin' : verificationStatus.badgeColor === 'purple' ? 'paid' : 'free'} />
+                  <VerifiedBadge type={verificationStatus.badgeColor} />
                 )}
               </h1>
               <p className="mt-0.5 text-sm text-zinc-500">@{toHandle(displayName)}</p>

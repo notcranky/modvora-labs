@@ -83,31 +83,20 @@ function timeAgo(dateStr: string): string {
 
 function VerifiedBadge({ 
   className = '', 
-  type = 'free',
-  earlySupporter = false 
+  type = 'purple'
 }: { 
   className?: string
-  type?: 'free' | 'paid' | 'admin' | null
-  earlySupporter?: boolean
+  type?: 'purple' | 'gold' | null
 }) {
-  // Determine badge color based on type
-  const getColor = () => {
-    if (type === 'admin') return '#f59e0b' // amber/gold
-    if (type === 'paid') {
-      return earlySupporter ? '#f59e0b' : '#a855f7' // amber for early supporters, purple for premium
-    }
-    return '#3b82f6' // blue for free (1K+ followers)
-  }
+  // Unified badge: purple for verified (paid OR 1K followers), gold for admin
+  const color = type === 'gold' ? '#f59e0b' : '#a855f7' // gold for admin, purple for verified
+  const tooltip = type === 'gold' ? 'Modvora Admin' : 'Verified Builder'
   
-  const getTooltip = () => {
-    if (type === 'admin') return 'Modvora Admin'
-    if (type === 'paid') return earlySupporter ? 'Early Supporter' : 'Verified Builder (Premium)'
-    return 'Verified Builder (1K+ followers)'
-  }
+  if (!type) return null
   
   return (
-    <span className={`inline-flex items-center justify-center ${className}`} title={getTooltip()}>
-      <svg viewBox="0 0 20 20" className="w-full h-full" style={{ fill: getColor() }}>
+    <span className={`inline-flex items-center justify-center ${className}`} title={tooltip}>
+      <svg viewBox="0 0 20 20" className="w-full h-full" fill={color}>
         <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
       </svg>
     </span>
@@ -262,8 +251,7 @@ interface PostCardProps {
   defaultAuthor: string
   isOwner: boolean
   isVerified?: boolean
-  verifiedType?: 'free' | 'paid' | 'admin' | null
-  earlySupporter?: boolean
+  badgeColor?: 'purple' | 'gold' | null
   commentLikedIds: Set<string>
   commentLikeCounts: Record<string, number>
   onLike: () => void
@@ -275,7 +263,7 @@ interface PostCardProps {
 }
 
 function PostCard(props: PostCardProps) {
-  const { post, resolvedImage, liked, saved, likeCount, comments, defaultAuthor, isOwner, isVerified, verifiedType, earlySupporter, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
+  const { post, resolvedImage, liked, saved, likeCount, comments, defaultAuthor, isOwner, isVerified, badgeColor, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
   const [showComments, setShowComments] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
@@ -311,7 +299,7 @@ function PostCard(props: PostCardProps) {
           <div className="min-w-0 flex-1">
             <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-purple-400 transition-colors truncate">
               {getPostAuthorHandle(post)}
-              {isVerified && <VerifiedBadge className="w-4 h-4 flex-shrink-0" type={verifiedType} earlySupporter={earlySupporter} />}
+              {isVerified && <VerifiedBadge className="w-4 h-4 flex-shrink-0" type={badgeColor} />}
             </Link>
             <p className="text-xs text-zinc-600 truncate">{post.vehicleLabel}</p>
           </div>
@@ -946,10 +934,8 @@ export default function CommunityGallery() {
               filteredPosts.map((post) => {
                 const authorName = post.vehicle.name || 'unknown'
                 const authorKey = toHandle(authorName)
-                const profile = verifiedProfiles.get(authorKey)
-                const isInVerifiedList = verifiedUsers.has(authorKey)
                 const isOwner = isOwnerHandle(authorName) || isOwnerHandle(authorKey)
-                const isVerified = isInVerifiedList || isOwner
+                const badgeColor = isOwner ? 'gold' : 'purple'
                 return (
                   <PostCard
                     key={post.id}
@@ -962,9 +948,8 @@ export default function CommunityGallery() {
                     tagCounts={tagCounts}
                     defaultAuthor={commenterName}
                     isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
-                    isVerified={isVerified}
-                    verifiedType={isOwner ? 'admin' : profile?.verified_type}
-                    earlySupporter={profile?.early_supporter}
+                    isVerified={true}
+                    badgeColor={badgeColor}
                     commentLikedIds={commentLikedIds}
                     commentLikeCounts={commentLikeCounts}
                     onLike={() => handleLike(post.id)}

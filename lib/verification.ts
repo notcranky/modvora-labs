@@ -164,21 +164,21 @@ export async function getVerifiedStatusByHandle(handle: string): Promise<Profile
   if (!supabaseEnabled) return null
 
   const normalizedHandle = handle.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
-  
+
   const { data: allVerified, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('verified', true)
-  
+
   if (error) return null
-  
+
   // Manual match
   const match = allVerified?.find(p => {
     const pHandle = p.handle?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
     const pUsername = p.username?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
     return pHandle === normalizedHandle || pUsername === normalizedHandle
   })
-  
+
   return match as ProfileWithVerification | null
 }
 
@@ -186,53 +186,54 @@ export async function getVerifiedStatusByHandle(handle: string): Promise<Profile
 
 export function getVerificationStatus(profile: ProfileWithVerification): {
   isVerified: boolean
-  badgeColor: string
+  badgeColor: 'purple' | 'gold' | null
   tooltip: string
   canExpire: boolean
 } {
   if (!profile.verified) {
-    return { isVerified: false, badgeColor: '', tooltip: '', canExpire: false }
+    return { isVerified: false, badgeColor: null, tooltip: '', canExpire: false }
   }
-
+  
   // Check if paid verification expired
   if (profile.verified_type === 'paid' && profile.verified_expires_at) {
     const expired = new Date(profile.verified_expires_at) < new Date()
     if (expired) {
-      return {
-        isVerified: false,
-        badgeColor: 'gray',
-        tooltip: 'Verification expired',
-        canExpire: true
+      return { 
+        isVerified: false, 
+        badgeColor: null, 
+        tooltip: 'Verification expired — resubscribe or reach 1K followers', 
+        canExpire: true 
       }
     }
   }
-
-  const isEarlySupporter = profile.early_supporter
-
-  switch (profile.verified_type) {
-    case 'admin':
-      return {
-        isVerified: true,
-        badgeColor: 'gold',
-        tooltip: 'Modvora Admin',
-        canExpire: false
-      }
-    case 'paid':
-      return {
-        isVerified: true,
-        badgeColor: 'purple',
-        tooltip: isEarlySupporter ? 'Early Supporter' : 'Verified Builder (Premium)',
-        canExpire: true
-      }
-    case 'free':
-    default:
-      return {
-        isVerified: true,
-        badgeColor: 'blue',
-        tooltip: 'Verified Builder (1K+ followers)',
-        canExpire: false
-      }
+  
+  // Admin/Owner — gold badge
+  if (profile.verified_type === 'admin') {
+    return { 
+      isVerified: true, 
+      badgeColor: 'gold', 
+      tooltip: 'Modvora Admin', 
+      canExpire: false 
+    }
   }
+  
+  // Both paid ($10/mo) and free (1K+ followers) get purple badge
+  // Unified "Verified Builder" status
+  const isPaid = profile.verified_type === 'paid'
+  const isFree = profile.verified_type === 'free' || profile.follower_count >= 1000
+  
+  if (isPaid || isFree) {
+    return { 
+      isVerified: true, 
+      badgeColor: 'purple', 
+      tooltip: isPaid 
+        ? 'Verified Builder (Premium)' 
+        : 'Verified Builder (1K+ followers)', 
+      canExpire: isPaid // Only paid can expire
+    }
+  }
+  
+  return { isVerified: false, badgeColor: null, tooltip: '', canExpire: false }
 }
 
 export function shouldAutoVerify(followerCount: number): boolean {
