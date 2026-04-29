@@ -8,6 +8,7 @@ import { toHandle, validateHandle } from '@/lib/profiles'
 import HPBadge, { getStoredHP, storeHP } from '@/components/HPBadge'
 import { useResolvedImageMap } from '@/lib/local-images'
 import { useAuth } from '@/hooks/useAuth'
+import { getUserLikes, getLikeCounts as getDbLikeCounts } from '@/lib/social-db'
 
 const LIKES_KEY = 'modvora_likes'
 const SAVES_KEY = 'modvora_saves'
@@ -89,7 +90,21 @@ export default function MyProfile() {
       setAllPosts(posts)
       setOwnedVehicleIds(new Set(loadVehicles().map((v) => v.id)))
       setOwnedPostIds(new Set(loadCommunityPosts().map((p) => p.id)))
-      setLikes(safeRead(LIKES_KEY, {}))
+      // Load from Supabase if logged in, otherwise localStorage
+      if (user?.id) {
+        const userLikes = await getUserLikes(user.id)
+        const likesObj: Record<string, boolean> = {}
+        userLikes.forEach(id => likesObj[id] = true)
+        setLikes(likesObj)
+        
+        // Also load all like counts for accurate display
+        const allPostIds = posts.map(p => p.id)
+        const dbLikeCounts = await getDbLikeCounts(allPostIds)
+        // Store in localStorage for consistency with other components
+        localStorage.setItem('modvora_like_counts', JSON.stringify(dbLikeCounts))
+      } else {
+        setLikes(safeRead(LIKES_KEY, {}))
+      }
       setSaves(safeRead(SAVES_KEY, {}))
       setComments(safeRead(COMMENTS_KEY, {}))
 

@@ -6,6 +6,7 @@ import { fetchPublishedBuilds, CommunityPostWithVehicle } from '@/lib/community'
 import { getPostAuthorUsername, isFollowing, toggleFollow, getFollowerCount, toHandle } from '@/lib/profiles'
 import { useResolvedImageMap } from '@/lib/local-images'
 import { getVerifiedUsers, getVerifiedStatusByHandle, isOwnerHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
+import { getLikeCounts as getDbLikeCounts } from '@/lib/social-db'
 
 function VerifiedBadge({ type = 'purple' }: { type?: 'purple' | 'gold' | null }) {
   // Unified badge: purple for verified (paid OR 1K followers), gold for admin
@@ -39,10 +40,10 @@ export default function UserProfile({ username }: UserProfileProps) {
       setAllPosts(posts)
       setFollowing(isFollowing(username))
       setFollowerCount(getFollowerCount(username))
-      try {
-        const stored = localStorage.getItem('modvora_like_counts')
-        setLikeCounts(stored ? JSON.parse(stored) : {})
-      } catch { /* ignore */ }
+      // Load like counts from Supabase
+      const postIds = posts.filter(p => getPostAuthorUsername(p) === username).map(p => p.id)
+      const dbLikeCounts = await getDbLikeCounts(postIds)
+      setLikeCounts(dbLikeCounts)
       
       // Load verification status
       const verifiedUsers = await getVerifiedUsers()
