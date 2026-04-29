@@ -218,18 +218,19 @@ export function getVerificationStatus(profile: ProfileWithVerification): {
   }
   
   // Both paid ($10/mo) and free (1K+ followers) get purple badge
-  // Unified "Verified Builder" status
+  // Under 1K = $10/mo, Over 1K = FREE
   const isPaid = profile.verified_type === 'paid'
-  const isFree = profile.verified_type === 'free' || profile.follower_count >= 1000
+  const hitFollowerGoal = profile.follower_count >= 1000
+  const isFree = profile.verified_type === 'free' || hitFollowerGoal
   
   if (isPaid || isFree) {
     return { 
       isVerified: true, 
       badgeColor: 'purple', 
-      tooltip: isPaid 
-        ? 'Verified Builder (Premium)' 
-        : 'Verified Builder (1K+ followers)', 
-      canExpire: isPaid // Only paid can expire
+      tooltip: hitFollowerGoal 
+        ? 'Verified Builder (Free — 1K+ followers)' 
+        : 'Verified Builder (Premium — $10/mo)', 
+      canExpire: isPaid && !hitFollowerGoal // Paid expires unless you hit 1K
     }
   }
   
