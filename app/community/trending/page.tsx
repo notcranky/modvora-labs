@@ -336,10 +336,11 @@ export default function TrendingPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b]">
-      {/* Community Navigation */}
-      <div className="sticky top-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="flex items-center gap-1 py-3 overflow-x-auto scrollbar-hide">
+      {/* Single Consolidated Header */}
+      <header className="sticky top-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
+        <div className="max-w-2xl mx-auto px-4 py-3">
+          {/* Navigation */}
+          <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-hide">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -347,9 +348,9 @@ export default function TrendingPage() {
                   key={item.href}
                   href={item.href}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                    flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
                     ${isActive 
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' 
+                      ? 'bg-purple-600 text-white' 
                       : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
                     }
                   `}
@@ -360,16 +361,12 @@ export default function TrendingPage() {
               )
             })}
           </div>
-        </div>
-      </div>
-
-      {/* Header */}
-      <header className="bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-[#1e1e24]">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          
+          {/* Title & Time Filters */}
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
+              <div className="p-2 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg">
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
               </div>
               <div>
                 <h1 className="font-bold text-white text-lg">Trending</h1>
@@ -381,7 +378,7 @@ export default function TrendingPage() {
           </div>
 
           {/* Time range tabs */}
-          <div className="flex gap-2 mt-4 overflow-x-auto scrollbar-hide pb-1">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {timeRanges.map(range => {
               const Icon = range.icon
               return (
@@ -389,14 +386,14 @@ export default function TrendingPage() {
                   key={range.id}
                   onClick={() => setTimeRange(range.id)}
                   className={`
-                    flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors
                     ${timeRange === range.id 
                       ? 'bg-purple-600 text-white' 
                       : 'bg-[#1a1a20] text-zinc-400 hover:text-white hover:bg-[#252530]'
                     }
                   `}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3 h-3" />
                   {range.label}
                 </button>
               )

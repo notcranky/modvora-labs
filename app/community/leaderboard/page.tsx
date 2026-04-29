@@ -491,10 +491,11 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b]">
-      {/* Community Navigation */}
-      <div className="sticky top-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex items-center gap-1 py-3 overflow-x-auto scrollbar-hide">
+      {/* Single Consolidated Header */}
+      <header className="sticky top-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-1 mb-4 overflow-x-auto scrollbar-hide">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -502,9 +503,9 @@ export default function LeaderboardPage() {
                   key={item.href}
                   href={item.href}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                    flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
                     ${isActive 
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' 
+                      ? 'bg-purple-600 text-white' 
                       : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
                     }
                   `}
@@ -515,24 +516,22 @@ export default function LeaderboardPage() {
               )
             })}
           </div>
-        </div>
-      </div>
-
-      {/* Header */}
-      <header className="bg-[#0a0a0b]/95 border-b border-[#1e1e24]">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl">
-              <TrophyIcon />
-            </div>
-            <div>
-              <h1 className="font-bold text-white text-2xl">Leaderboard</h1>
-              <p className="text-zinc-400 text-sm">Top builders in the community</p>
+          
+          {/* Title & Category Tabs */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg">
+                <TrophyIcon />
+              </div>
+              <div>
+                <h1 className="font-bold text-white text-lg">Leaderboard</h1>
+                <p className="text-zinc-500 text-xs">{activeCategory?.description}</p>
+              </div>
             </div>
           </div>
           
-          {/* Category tabs */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+          {/* Category & Timeframe */}
+          <div className="flex flex-wrap items-center gap-2">
             {categories.map(cat => {
               const Icon = cat.icon
               return (
@@ -540,9 +539,9 @@ export default function LeaderboardPage() {
                   key={cat.id}
                   onClick={() => setCategory(cat.id)}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all
                     ${category === cat.id 
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' 
+                      ? 'bg-purple-600 text-white' 
                       : 'bg-[#1a1a20] text-zinc-400 hover:text-white hover:bg-[#252530]'
                     }
                   `}
@@ -552,10 +551,9 @@ export default function LeaderboardPage() {
                 </button>
               )
             })}
-          </div>
-          
-          {/* Timeframe tabs */}
-          <div className="flex gap-2 mt-3">
+            
+            <div className="w-px h-4 bg-[#2a2a30] mx-1" />
+            
             {timeframes.map(tf => (
               <button
                 key={tf.id}
