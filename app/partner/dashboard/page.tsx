@@ -32,9 +32,16 @@ export default function ModeratorDashboard() {
   const [selectedItem, setSelectedItem] = useState<ModerationItem | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'video' | 'flagged'>('all')
+  const [showMobilePanel, setShowMobilePanel] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     checkAuth()
+    // Detect mobile
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   useEffect(() => {
@@ -128,10 +135,19 @@ export default function ModeratorDashboard() {
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Mobile Queue Toggle */}
+            <button
+              onClick={() => setShowMobilePanel(true)}
+              className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-400"
+            >
+              <span>📝</span>
+              <span className="font-medium">{queue.length}</span>
+            </button>
+            
             <div className="text-right hidden sm:block">
               <div className="text-2xl font-bold text-white">{queue.length}</div>
-              <div className="text-xs text-zinc-500">Pending Reviews</div>
+              <div className="text-xs text-zinc-500">Pending</div>
             </div>
             <button
               onClick={handleLogout}
@@ -164,6 +180,71 @@ export default function ModeratorDashboard() {
         </div>
       </div>
 
+      {/* Mobile Slide-out Queue Panel */}
+      {showMobilePanel && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div 
+            className="flex-1 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowMobilePanel(false)}
+          />
+          {/* Panel */}
+          <div className="w-4/5 max-w-sm bg-[#0a0a0b] border-l border-[#1e1e24] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-[#1e1e24]">
+              <div>
+                <h2 className="font-bold text-white">Moderation Queue</h2>
+                <p className="text-sm text-zinc-500">{queue.length} pending</p>
+              </div>
+              <button 
+                onClick={() => setShowMobilePanel(false)}
+                className="p-2 rounded-lg text-zinc-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Mobile Queue List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {queue.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setSelectedItem(item)
+                    setShowMobilePanel(false)
+                  }}
+                  className={`w-full text-left p-4 rounded-xl border transition-all ${
+                    selectedItem?.id === item.id
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-[#1e1e24] bg-[#111116]'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      item.media_type === 'video' 
+                        ? 'bg-red-500/20 text-red-400' 
+                        : 'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {item.media_type === 'video' ? 'VIDEO' : 'IMAGE'}
+                    </span>
+                    {item.ai_score > 0.5 && (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400">
+                        ⚠️ FLAGGED
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-semibold text-white text-sm mb-1 line-clamp-2">
+                    {item.post_title || 'Untitled'}
+                  </h4>
+                  <p className="text-xs text-zinc-500">
+                    @{item.author_handle || 'unknown'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="p-6">
         {loading ? (
@@ -178,8 +259,8 @@ export default function ModeratorDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Queue List */}
-            <div className="lg:col-span-1 space-y-3">
+            {/* Queue List - Desktop Only */}
+            <div className="hidden lg:block lg:col-span-1 space-y-3">
               {queue.map((item) => (
                 <button
                   key={item.id}
@@ -298,8 +379,11 @@ export default function ModeratorDashboard() {
               ) : (
                 <div className="flex items-center justify-center h-full min-h-[400px] text-zinc-500">
                   <div className="text-center">
-                    <div className="text-4xl mb-4">👆</div>
-                    <p>Select an item from the queue to review</p>
+                    <div className="text-4xl mb-4">📝</div>
+                    <p className="mb-2">Select an item to review</p>
+                    <p className="text-sm text-zinc-600 lg:hidden">
+                      Tap the 📝 button above to open the queue
+                    </p>
                   </div>
                 </div>
               )}
