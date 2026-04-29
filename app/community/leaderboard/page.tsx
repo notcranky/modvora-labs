@@ -274,19 +274,39 @@ function UserStatsCard({ userId }: { userId: string }) {
   )
 }
 
+// Community navigation (same as main community page)
+const navItems = [
+  { href: '/community', label: 'Feed', icon: '🏠' },
+  { href: '/community/trending', label: 'Trending', icon: '🔥' },
+  { href: '/community/leaderboard', label: 'Leaderboard', icon: '🏆' },
+  { href: '/community/explore', label: 'Explore', icon: '🔍' },
+]
+
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [category, setCategory] = useState('overall')
   const [timeframe, setTimeframe] = useState('all')
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
   const [userRank, setUserRank] = useState<number | null>(null)
   
   useEffect(() => {
-    // Get current user
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null)
-    })
+    // Get current user with better auth check
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserId(user.id)
+        // Fetch the user's profile directly to ensure we have correct data
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setUserProfile(profile)
+      }
+    }
+    getUser()
   }, [])
   
   useEffect(() => {
@@ -381,10 +401,39 @@ export default function LeaderboardPage() {
   const activeCategory = categories.find(c => c.id === category)
   const ActiveIcon = activeCategory?.icon || TrophyIcon
   
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+
   return (
     <div className="min-h-screen bg-[#0a0a0b]">
+      {/* Community Navigation */}
+      <div className="sticky top-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex items-center gap-1 py-3 overflow-x-auto scrollbar-hide">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`
+                    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                    ${isActive 
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' 
+                      : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
+                    }
+                  `}
+                >
+                  <span>{item.icon}</span>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
+      <header className="bg-[#0a0a0b]/95 border-b border-[#1e1e24]">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl">
@@ -441,9 +490,52 @@ export default function LeaderboardPage() {
       </header>
       
       {/* User stats card (if logged in) */}
-      {userId && (
+      {userId && userProfile && (
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <UserStatsCard userId={userId} />
+          <div className="bg-gradient-to-br from-purple-900/30 to-[#16161a] border border-purple-500/30 rounded-2xl p-6">
+            <div className="flex items-start gap-4">
+              <img
+                src={userProfile.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${userProfile.username || userProfile.email}`}
+                alt={userProfile.username || 'You'}
+                className="w-16 h-16 rounded-full bg-zinc-800 object-cover"
+              />
+              <div className="flex-1">
+                <h3 className="font-bold text-white text-lg">
+                  {userProfile.username || userProfile.email?.split('@')[0] || 'You'}
+                </h3>
+                <p className="text-zinc-400">@{userProfile.handle || userProfile.username || 'user'}</p>
+                
+                {(() => {
+                  const level = calculateLevel(userProfile.total_xp || 0)
+                  return (
+                    <>
+                      <div className="flex items-center gap-3 mt-3">
+                        <LevelBadge level={level.level} size="md" />
+                        <StreakBadge streak={userProfile.current_streak || 0} size="sm" />
+                      </div>
+                      
+                      {/* XP Bar */}
+                      <div className="mt-4">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-zinc-400">Level {level.level} - {level.title}</span>
+                          <span className="text-zinc-400">{level.xpToNext - level.currentXP} to next</span>
+                        </div>
+                        <div className="h-2 bg-[#2a2a30] rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-gradient-to-r from-purple-600 to-purple-400"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(level.currentXP / level.xpToNext) * 100}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-1">{(userProfile.total_xp || 0).toLocaleString()} total XP</p>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            </div>
+          </div>
           
           {userRank && (
             <div className="mt-4 text-center">
@@ -452,6 +544,21 @@ export default function LeaderboardPage() {
               </p>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Not logged in prompt */}
+      {!userId && !loading && (
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="bg-[#16161a] border border-[#2a2a30] rounded-2xl p-6 text-center">
+            <p className="text-zinc-400 mb-3">Sign in to see your ranking and stats!</p>
+            <Link 
+              href="/signin"
+              className="inline-flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-full font-medium hover:bg-purple-700 transition-colors"
+            >
+              Sign In
+            </Link>
+          </div>
         </div>
       )}
       

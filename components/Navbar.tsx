@@ -19,6 +19,8 @@ const marketingLinks = [
 const coreLinks = [
   { href: '/dashboard', label: 'My Build' },
   { href: '/community', label: 'Community' },
+  { href: '/community/trending', label: '🔥 Trending' },
+  { href: '/community/leaderboard', label: '🏆 Leaderboard' },
   { href: '/dashboard/mod-laws', label: 'Mod Laws' },
 ]
 
