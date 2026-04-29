@@ -368,3 +368,42 @@ export function subscribeToComments(postId: string, callback: (comments: Comment
     })
     .subscribe()
 }
+
+// Subscribe to ALL likes changes (for community feed)
+export function subscribeToAllLikes(callback: (postId: string, count: number) => void) {
+  return supabase
+    .channel('likes:all')
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'likes'
+    }, async (payload) => {
+      const postId = payload.new?.post_id || payload.old?.post_id
+      if (postId) {
+        const { count } = await supabase
+          .from('likes')
+          .select('id', { count: 'exact' })
+          .eq('post_id', postId)
+        callback(postId, count || 0)
+      }
+    })
+    .subscribe()
+}
+
+// Subscribe to ALL comments changes (for community feed)
+export function subscribeToAllComments(callback: (postId: string, comments: CommentWithReplies[]) => void) {
+  return supabase
+    .channel('comments:all')
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'comments'
+    }, async (payload) => {
+      const postId = payload.new?.post_id || payload.old?.post_id
+      if (postId) {
+        const comments = await getComments(postId)
+        callback(postId, comments)
+      }
+    })
+    .subscribe()
+}

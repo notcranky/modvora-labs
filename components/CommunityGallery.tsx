@@ -20,7 +20,9 @@ import {
   getShareCounts,
   trackShare,
   getAllPostStats,
-  PostStats
+  PostStats,
+  subscribeToAllLikes,
+  subscribeToAllComments
 } from '@/lib/social-db'
 import { getVerifiedUsers, getVerifiedStatusByHandle, isOwnerHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 import NotificationBell from '@/components/NotificationBell'
@@ -741,6 +743,42 @@ export default function CommunityGallery() {
       loadData()
     }
   }, [supabaseUserId])
+
+  // Realtime subscriptions for likes and comments
+  useEffect(() => {
+    if (posts.length === 0) return
+
+    // Subscribe to all likes changes
+    const likesSubscription = subscribeToAllLikes((postId, count) => {
+      setLikeCounts(prev => ({ ...prev, [postId]: count }))
+    })
+
+    // Subscribe to all comments changes
+    const commentsSubscription = subscribeToAllComments((postId, newComments) => {
+      setComments(prev => ({ 
+        ...prev, 
+        [postId]: newComments.map(c => ({
+          id: c.id,
+          author: c.author,
+          text: c.text,
+          createdAt: c.created_at,
+          replies: c.replies?.map(r => ({
+            id: r.id,
+            author: r.author,
+            text: r.text,
+            createdAt: r.created_at
+          })) || []
+        }))
+      }))
+      // Update comment count
+      setCommentCounts(prev => ({ ...prev, [postId]: newComments.length }))
+    })
+
+    return () => {
+      likesSubscription.unsubscribe()
+      commentsSubscription.unsubscribe()
+    }
+  }, [posts.length])
 
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {}
