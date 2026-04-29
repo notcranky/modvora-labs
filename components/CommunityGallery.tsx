@@ -706,7 +706,26 @@ export default function CommunityGallery() {
       const q = search.trim().toLowerCase()
       result = result.filter((p) => p.title.toLowerCase().includes(q) || p.vehicleLabel.toLowerCase().includes(q) || p.tags.some((t) => t.toLowerCase().includes(q)) || (p.vehicle.name || '').toLowerCase().includes(q))
     }
-    if (sortBy === 'liked') result.sort((a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0))
+    if (sortBy === 'liked') {
+      // Owner posts get massive boost (100x likes) so they appear at top
+      result.sort((a, b) => {
+        const aIsOwner = isOwnerHandle(a.vehicle.name || '')
+        const bIsOwner = isOwnerHandle(b.vehicle.name || '')
+        const aScore = (likeCounts[a.id] ?? 0) * (aIsOwner ? 100 : 1)
+        const bScore = (likeCounts[b.id] ?? 0) * (bIsOwner ? 100 : 1)
+        return bScore - aScore
+      })
+    } else {
+      // Default sort: owner posts first, then by date
+      result.sort((a, b) => {
+        const aIsOwner = isOwnerHandle(a.vehicle.name || '')
+        const bIsOwner = isOwnerHandle(b.vehicle.name || '')
+        if (aIsOwner && !bIsOwner) return -1
+        if (!aIsOwner && bIsOwner) return 1
+        // Both owner or both not — sort by date (newest first)
+        return new Date(b.publishedAt ?? b.updatedAt).getTime() - new Date(a.publishedAt ?? a.updatedAt).getTime()
+      })
+    }
     return result
   }, [posts, filterTag, search, sortBy, likeCounts])
 
