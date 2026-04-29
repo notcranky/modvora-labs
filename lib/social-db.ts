@@ -253,3 +253,118 @@ export async function getCommentLikeCounts(commentIds: string[]): Promise<Record
   
   return counts
 }
+
+// ===== SHARES =====
+
+export async function trackShare(postId: string, userId?: string, platform: string = 'copy_link'): Promise<boolean> {
+  const { error } = await supabase
+    .from('shares')
+    .insert({
+      post_id: postId,
+      user_id: userId || null,
+      platform
+    })
+  
+  if (error) {
+    console.error('Error tracking share:', error)
+    return false
+  }
+  return true
+}
+
+export async function getShareCounts(postIds: string[]): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from('shares')
+    .select('post_id')
+    .in('post_id', postIds)
+  
+  if (error) {
+    console.error('Error fetching share counts:', error)
+    return {}
+  }
+  
+  const counts: Record<string, number> = {}
+  for (const share of data || []) {
+    counts[share.post_id] = (counts[share.post_id] || 0) + 1
+  }
+  
+  return counts
+}
+
+// ===== POST STATS (Combined) =====
+
+export interface PostStats {
+  likes: number
+  comments: number
+  shares: number
+}
+
+export async function getPostStats(postId: string): Promise<PostStats> {
+  const [likes, comments, shares] = await Promise.all([
+    supabase.from('likes').select('id', { count: 'exact' }).eq('post_id', postId),
+    supabase.from('comments').select('id', { count: 'exact' }).eq('post_id', postId),
+    supabase.from('shares').select('id', { count: 'exact' }).eq('post_id', postId)
+  ])
+  
+  return {
+    likes: likes.count || 0,
+    comments: comments.count || 0,
+    shares: shares.count || 0
+  }
+}
+
+export async function getAllPostStats(postIds: string[]): Promise<Record<string, PostStats>> {
+  const { data, error } = await supabase
+    .rpc('get_posts_stats', { post_ids: postIds })
+  
+  if (error || !data) {
+    console.error('Error fetching post stats:', error)
+    return {}
+  }
+  
+  const stats: Record<string, PostStats> = {}
+  for (const row of data) {
+    stats[row.post_id] = {
+      likes: Number(row.likes) || 0,
+      comments: Number(row.comments) || 0,
+      shares: Number(row.shares) || 0
+    }
+  }
+  
+  return stats
+}
+
+// ===== REALTIME SUBSCRIPTIONS =====
+
+export function subscribeToLikes(postId: string, callback: (count: number) => void) {
+  return supabase
+    .channel(`likes:${postId}`)
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'likes',
+      filter: `post_id=eq.${postId}`
+    }, async () => {
+      const { count } = await supabase
+        .from('likes')
+        .select('id', { count: 'exact' })
+        .eq('post_id', postId)
+      callback(count || 0)
+    })
+    .subscribe()
+}
+
+export function subscribeToComments(postId: string, callback: (comments: CommentWithReplies[]) => void) {
+  return supabase
+    .channel(`comments:${postId}`)
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'comments',
+      filter: `post_id=eq.${postId}`
+    }, async () => {
+      const comments = await getComments(postId)
+      callback(comments)
+    })
+    .subscribe()
+}

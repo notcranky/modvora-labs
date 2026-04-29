@@ -16,7 +16,11 @@ import {
   addComment as addDbComment,
   getUserCommentLikes,
   toggleCommentLike as toggleDbCommentLike,
-  getCommentLikeCounts
+  getCommentLikeCounts,
+  getShareCounts,
+  trackShare,
+  getAllPostStats,
+  PostStats
 } from '@/lib/social-db'
 import { getVerifiedUsers, getVerifiedStatusByHandle, isOwnerHandle, ProfileWithVerification, getVerificationStatus } from '@/lib/verification'
 import NotificationBell from '@/components/NotificationBell'
@@ -246,6 +250,8 @@ interface PostCardProps {
   liked: boolean
   saved: boolean
   likeCount: number
+  commentCount: number
+  shareCount: number
   comments: Comment[]
   tagCounts: Record<string, number>
   defaultAuthor: string
@@ -256,6 +262,7 @@ interface PostCardProps {
   commentLikeCounts: Record<string, number>
   onLike: () => void
   onSave: () => void
+  onShare: () => void
   onAddComment: (text: string, author: string) => void
   onAuthorChange: (name: string) => void
   onLikeComment: (commentId: string, commentAuthor: string, commentText: string) => void
@@ -263,7 +270,7 @@ interface PostCardProps {
 }
 
 function PostCard(props: PostCardProps) {
-  const { post, resolvedImage, liked, saved, likeCount, comments, defaultAuthor, isOwner, isVerified, badgeColor, commentLikedIds, commentLikeCounts, onLike, onSave, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
+  const { post, resolvedImage, liked, saved, likeCount, commentCount, shareCount, comments, defaultAuthor, isOwner, isVerified, badgeColor, commentLikedIds, commentLikeCounts, onLike, onSave, onShare, onAddComment, onAuthorChange, onLikeComment, onReplyToComment } = props
   const [showComments, setShowComments] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
@@ -272,7 +279,11 @@ function PostCard(props: PostCardProps) {
   const imageRef = useRef<HTMLDivElement>(null)
 
   function handleShare() {
-    navigator.clipboard.writeText(`${window.location.origin}/community/${post.slug}`).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
+    navigator.clipboard.writeText(`${window.location.origin}/community/${post.slug}`).then(() => {
+      setCopied(true)
+      onShare() // Track the share
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
 
   function handleImageClick(e: React.MouseEvent | React.TouchEvent) {
@@ -333,7 +344,19 @@ function PostCard(props: PostCardProps) {
           <button onClick={onSave} className={`rounded-full p-2 transition-colors ${saved ? 'text-purple-400' : 'text-zinc-400 hover:text-white'}`}><BookmarkIcon filled={saved} /></button>
         </div>
         <div className="px-4 pb-4 space-y-2">
-          {likeCount > 0 && <p className="text-sm font-semibold text-white">{likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}</p>}
+          {/* Stats row */}
+          {(likeCount > 0 || commentCount > 0 || shareCount > 0) && (
+            <div className="flex items-center gap-4 text-sm text-zinc-400">
+              {likeCount > 0 && <span><span className="font-semibold text-white">{likeCount.toLocaleString()}</span> {likeCount === 1 ? 'like' : 'likes'}</span>}
+              {commentCount > 0 && (
+                <button onClick={() => setShowComments(true)} className="hover:text-zinc-300 transition-colors">
+                  <span className="font-semibold text-white">{commentCount.toLocaleString()}</span> {commentCount === 1 ? 'comment' : 'comments'}
+                </button>
+              )}
+              {shareCount > 0 && <span><span className="font-semibold text-white">{shareCount.toLocaleString()}</span> {shareCount === 1 ? 'share' : 'shares'}</span>}
+            </div>
+          )}
+          
           <div>
             <p className="text-sm leading-snug">
               <Link href={`/community/profile/${getPostAuthorUsername(post)}`} className="font-semibold text-white hover:underline">{getPostAuthorHandle(post)}</Link>{' '}<span className="font-medium text-white">{post.title}</span>
@@ -346,7 +369,11 @@ function PostCard(props: PostCardProps) {
               {post.tags.length > 4 && <span className="text-xs text-zinc-500">+{post.tags.length - 4}</span>}
             </div>
           )}
-          {totalCommentCount > 0 && <button onClick={() => setShowComments(true)} className="text-left text-sm text-zinc-500 hover:text-zinc-300">View all {totalCommentCount} {totalCommentCount === 1 ? 'comment' : 'comments'}</button>}
+          {commentCount > 0 && !showComments && (
+            <button onClick={() => setShowComments(true)} className="text-left text-sm text-zinc-500 hover:text-zinc-300">
+              View all {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
+            </button>
+          )}
         </div>
       </article>
       <AnimatePresence>
@@ -471,6 +498,8 @@ interface FollowingFeedProps {
   likes: Record<string, boolean>
   saves: Record<string, boolean>
   likeCounts: Record<string, number>
+  commentCounts: Record<string, number>
+  shareCounts: Record<string, number>
   comments: Record<string, Comment[]>
   tagCounts: Record<string, number>
   commenterName: string
@@ -483,6 +512,7 @@ interface FollowingFeedProps {
   loading: boolean
   onLike: (postId: string) => void
   onSave: (postId: string) => void
+  onShare: (postId: string) => void
   onAddComment: (postId: string, text: string, author: string) => void
   onNameChange: (name: string) => void
   onLikeComment: (postId: string, commentId: string, commentAuthor: string, commentText: string) => void
@@ -490,7 +520,7 @@ interface FollowingFeedProps {
 }
 
 function FollowingFeed(props: FollowingFeedProps) {
-  const { posts, likes, saves, likeCounts, comments, tagCounts, commenterName, ownedVehicleIds, ownedPostIds, commentLikedIds, commentLikeCounts, resolvedImageMap, verifiedUsers, loading, onLike, onSave, onAddComment, onNameChange, onLikeComment, onReplyToComment } = props
+  const { posts, likes, saves, likeCounts, commentCounts, shareCounts, comments, tagCounts, commenterName, ownedVehicleIds, ownedPostIds, commentLikedIds, commentLikeCounts, resolvedImageMap, verifiedUsers, loading, onLike, onSave, onShare, onAddComment, onNameChange, onLikeComment, onReplyToComment } = props
   const followedPosts = useMemo(() => {
     const followed = getFollowedUsernames()
     return posts.filter(p => followed.has(getPostAuthorUsername(p)))
@@ -533,6 +563,8 @@ function FollowingFeed(props: FollowingFeedProps) {
           liked={!!likes[post.id]}
           saved={!!saves[post.id]}
           likeCount={likeCounts[post.id] ?? 0}
+          commentCount={commentCounts[post.id] ?? 0}
+          shareCount={shareCounts[post.id] ?? 0}
           comments={comments[post.id] ?? []}
           tagCounts={tagCounts}
           defaultAuthor={commenterName}
@@ -541,6 +573,7 @@ function FollowingFeed(props: FollowingFeedProps) {
           commentLikeCounts={commentLikeCounts}
           onLike={() => onLike(post.id)}
           onSave={() => onSave(post.id)}
+          onShare={() => onShare(post.id)}
           onAddComment={(text, author) => onAddComment(post.id, text, author)}
           onAuthorChange={onNameChange}
           onLikeComment={(commentId, commentAuthor, commentText) => onLikeComment(post.id, commentId, commentAuthor, commentText)}
@@ -558,6 +591,8 @@ export default function CommunityGallery() {
   const [likes, setLikes] = useState<Record<string, boolean>>({})
   const [saves, setSaves] = useState<Record<string, boolean>>({})
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
+  const [shareCounts, setShareCounts] = useState<Record<string, number>>({})
   const [comments, setComments] = useState<Record<string, Comment[]>>({})
   const [commenterName, setCommenterName] = useState('')
   const [commentLikedIds, setCommentLikedIds] = useState<Set<string>>(new Set())
@@ -612,10 +647,26 @@ export default function CommunityGallery() {
       setOwnedVehicleIds(new Set(loadVehicles().map((v) => v.id)))
       setOwnedPostIds(new Set(loadCommunityPosts().map((p) => p.id)))
       
-      // If Supabase user is logged in, load their data
+      // Load all social stats from Supabase (for everyone - counts are public)
+      const postIds = fetched.map(p => p.id)
+      const allStats = await getAllPostStats(postIds)
+      const statsLikeCounts: Record<string, number> = {}
+      const statsCommentCounts: Record<string, number> = {}
+      const statsShareCounts: Record<string, number> = {}
+      
+      for (const [postId, stats] of Object.entries(allStats)) {
+        statsLikeCounts[postId] = stats.likes
+        statsCommentCounts[postId] = stats.comments
+        statsShareCounts[postId] = stats.shares
+      }
+      
+      setLikeCounts(prev => ({ ...prev, ...statsLikeCounts }))
+      setCommentCounts(prev => ({ ...prev, ...statsCommentCounts }))
+      setShareCounts(prev => ({ ...prev, ...statsShareCounts }))
+      
+      // If Supabase user is logged in, also load their personal data (likes, saves)
       if (supabaseUserId) {
         const userLikes = await getUserLikes(supabaseUserId)
-        const dbLikeCounts = await getDbLikeCounts(fetched.map(p => p.id))
         const dbComments: Record<string, Comment[]> = {}
         for (const post of fetched) {
           const postComments = await getDbComments(post.id)
@@ -762,6 +813,14 @@ export default function CommunityGallery() {
     } else {
       safeWrite(SAVES_KEY, { ...saves, [postId]: !wasSaved })
     }
+  }
+
+  async function handleShare(postId: string) {
+    // Track share in Supabase
+    await trackShare(postId, supabaseUserId || undefined)
+    
+    // Optimistic UI update
+    setShareCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + 1 }))
   }
 
   function handleNameChange(name: string) {
@@ -963,6 +1022,8 @@ export default function CommunityGallery() {
                     liked={!!likes[post.id]}
                     saved={!!saves[post.id]}
                     likeCount={likeCounts[post.id] ?? 0}
+                    commentCount={commentCounts[post.id] ?? 0}
+                    shareCount={shareCounts[post.id] ?? 0}
                     comments={comments[post.id] ?? []}
                     tagCounts={tagCounts}
                     defaultAuthor={commenterName}
@@ -973,6 +1034,7 @@ export default function CommunityGallery() {
                     commentLikeCounts={commentLikeCounts}
                     onLike={() => handleLike(post.id)}
                     onSave={() => handleSave(post.id)}
+                    onShare={() => handleShare(post.id)}
                     onAddComment={(text, author) => handleAddComment(post.id, text, author)}
                     onAuthorChange={handleNameChange}
                     onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
@@ -1004,6 +1066,8 @@ export default function CommunityGallery() {
             likes={likes}
             saves={saves}
             likeCounts={likeCounts}
+            commentCounts={commentCounts}
+            shareCounts={shareCounts}
             comments={comments}
             tagCounts={tagCounts}
             commenterName={commenterName}
@@ -1015,6 +1079,7 @@ export default function CommunityGallery() {
             loading={loading}
             onLike={handleLike}
             onSave={handleSave}
+            onShare={handleShare}
             onAddComment={handleAddComment}
             onNameChange={handleNameChange}
             onLikeComment={handleLikeComment}
