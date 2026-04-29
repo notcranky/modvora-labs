@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, loadCommunityPosts, CommunityPostWithVehicle } from '@/lib/community'
 import { loadVehicles } from '@/lib/garage'
-import { toHandle } from '@/lib/profiles'
+import { toHandle, validateHandle } from '@/lib/profiles'
 import HPBadge, { getStoredHP, storeHP } from '@/components/HPBadge'
 import { useResolvedImageMap } from '@/lib/local-images'
 import { useAuth } from '@/hooks/useAuth'
@@ -187,13 +187,23 @@ export default function MyProfile() {
 
   async function saveProfile() {
     const trimmedName = editName.trim()
-    const trimmedHandle = toHandle(editHandle.replace(/^@/, '').trim())
+    const handleInput = editHandle.replace(/^@/, '').trim()
+    const trimmedHandle = handleInput ? toHandle(handleInput) : ''
+
+    // Validate handle format first
+    if (handleInput) {
+      const validation = validateHandle(handleInput)
+      if (!validation.valid) {
+        setHandleError(validation.error || 'Invalid handle')
+        return
+      }
+    }
 
     // Check handle uniqueness
     if (trimmedHandle && trimmedHandle !== commenterHandle) {
       const isUnique = await checkHandleUnique(trimmedHandle)
       if (!isUnique) {
-        setHandleError(`@${trimmedHandle} is already taken`)
+        setHandleError(`@${trimmedHandle} is already taken. Choose another.`)
         return
       }
     }
@@ -504,18 +514,33 @@ export default function MyProfile() {
 
               {/* Handle */}
               <div className="mb-6">
-                <label className="mb-1.5 block text-xs text-zinc-500">Handle</label>
-                <div className="flex items-center gap-1.5 rounded-xl border bg-[#18181f] px-3 py-2 transition-colors focus-within:border-purple-500/50 border-[#2a2a35]">
+                <label className="mb-1.5 block text-xs text-zinc-500">Handle <span className="text-zinc-600">(unique, no spaces)</span></label>
+                <div className={`flex items-center gap-1.5 rounded-xl border bg-[#18181f] px-3 py-2 transition-colors focus-within:border-purple-500/50 ${handleError ? 'border-red-500/50' : 'border-[#2a2a35]'}`}>
                   <span className="text-sm text-zinc-500">@</span>
                   <input
                     type="text"
                     value={editHandle.replace(/^@/, '')}
-                    onChange={(e) => { setEditHandle(e.target.value); setHandleError('') }}
-                    placeholder="yourhandle"
+                    onChange={(e) => {
+                      const val = e.target.value
+                      // Prevent spaces in real-time
+                      if (val.includes(' ')) {
+                        setHandleError('Spaces not allowed — use underscores_')
+                      } else {
+                        setHandleError('')
+                      }
+                      setEditHandle(val.replace(/\s+/g, '_'))
+                    }}
+                    placeholder="your_handle"
                     className="flex-1 bg-transparent text-sm text-white placeholder-zinc-600 outline-none"
                   />
                 </div>
-                {handleError && <p className="mt-1.5 text-xs text-red-400">{handleError}</p>}
+                {handleError ? (
+                  <p className="mt-1.5 text-xs text-red-400">{handleError}</p>
+                ) : (
+                  <p className="mt-1.5 text-xs text-zinc-600">
+                    Letters, numbers, underscores only. 3-30 chars.
+                  </p>
+                )}
               </div>
 
               {/* Actions */}

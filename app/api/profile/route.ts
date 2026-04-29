@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifySession, COOKIE_NAME } from '@/lib/session'
 import { supabaseServer } from '@/lib/supabase-server'
+import { validateHandle } from '@/lib/profiles'
 
 // GET /api/profile - Get current user's profile
 export async function GET() {
@@ -68,6 +69,27 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json()
   const { name, handle, bio, photo_url, horsepower_wh, horsepower_crank } = body
   console.log('[profile PATCH] Body:', body)
+
+  // Validate handle if provided
+  if (handle) {
+    const handleClean = handle.toLowerCase().trim().replace(/^@/, '')
+    const validation = validateHandle(handleClean)
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+    
+    // Check if handle is taken by someone else
+    const { data: existingHandle } = await supabaseServer
+      .from('user_profiles')
+      .select('email')
+      .eq('handle', handleClean)
+      .neq('email', user.email)  // Exclude current user
+      .maybeSingle()
+    
+    if (existingHandle) {
+      return NextResponse.json({ error: `@${handleClean} is already taken` }, { status: 409 })
+    }
+  }
 
   // First, try to get existing profile
   const { data: existing } = await supabaseServer

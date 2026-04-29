@@ -68,13 +68,48 @@ export function getPostAuthorDisplayName(post: CommunityPostWithVehicle): string
 }
 
 // Generates an @handle from a display name (e.g. "Jackson Fontas" → "jackson_fontas")
+// NO SPACES allowed — handles must be taggable like @handle (not @handle text)
 export function toHandle(name: string): string {
   return name
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
+    .replace(/\s+/g, '_')           // Spaces → underscores
+    .replace(/[^a-z0-9_]+/g, '')   // Remove all other special chars
+    .replace(/^_+|_+$/g, '')        // Trim leading/trailing underscores
+    .replace(/_+/g, '_')            // Collapse multiple underscores
     .slice(0, 30) || 'user'
+}
+
+// Validates a handle for input (stricter than toHandle)
+export function validateHandle(handle: string): { valid: boolean; error?: string } {
+  const h = handle.toLowerCase().trim().replace(/^@/, '')
+  
+  if (!h) {
+    return { valid: false, error: 'Handle is required' }
+  }
+  
+  if (h.length < 3) {
+    return { valid: false, error: 'Handle must be at least 3 characters' }
+  }
+  
+  if (h.length > 30) {
+    return { valid: false, error: 'Handle must be 30 characters or less' }
+  }
+  
+  // NO SPACES allowed — this is critical for tagging (@handle vs @handle text)
+  if (h.includes(' ')) {
+    return { valid: false, error: 'Handle cannot contain spaces (use underscores instead)' }
+  }
+  
+  if (!/^[a-z0-9_]+$/.test(h)) {
+    return { valid: false, error: 'Handle can only contain letters, numbers, and underscores' }
+  }
+  
+  if (/^[0-9]+$/.test(h)) {
+    return { valid: false, error: 'Handle cannot be only numbers' }
+  }
+  
+  return { valid: true }
 }
 
 export function getPostAuthorHandle(post: CommunityPostWithVehicle): string {
