@@ -12,6 +12,9 @@ import { loadVehicles } from '@/lib/garage'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getBuilderXP, getLevel, getProgressToNextLevel, getLevelColorClasses, BuilderLevel } from '@/lib/builder-levels'
 import { getBuildOfWeek, isBuildOfWeek, getBotWBadge, BuildOfWeek } from '@/lib/build-of-week'
+import SmartSearchSidebar, { FilterState } from '@/components/SmartSearchSidebar'
+import LeaderboardsPanel from '@/components/LeaderboardsPanel'
+import BuildBattle from '@/components/BuildBattle'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -898,6 +901,20 @@ export default function CommunityGallery() {
   const [feedFilter, setFeedFilter] = useState<'all' | 'following'>('all')
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
+  
+  // Smart Filter State
+  const [smartFilters, setSmartFilters] = useState<FilterState>({
+    search: '',
+    make: '',
+    model: '',
+    minHp: null,
+    maxHp: null,
+    minBudget: null,
+    maxBudget: null,
+    tags: [],
+    status: 'all',
+    sort: 'newest',
+  })
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
@@ -961,9 +978,81 @@ export default function CommunityGallery() {
     if (sortBy === 'liked') result.sort((a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0))
     return result
   }, [posts, filterTag, search, sortBy, likeCounts, feedFilter])
+  
+  // Smart Filter Posts
+  const smartFilteredPosts = useMemo(() => {
+    let result = [...filteredPosts]
+    
+    // Smart search filters
+    if (smartFilters.search) {
+      const q = smartFilters.search.toLowerCase()
+      result = result.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.vehicleLabel.toLowerCase().includes(q) ||
+        p.tags.some(t => t.toLowerCase().includes(q))
+      )
+    }
+    
+    // Make filter (from vehicleLabel)
+    if (smartFilters.make) {
+      result = result.filter(p => 
+        p.vehicleLabel.toLowerCase().includes(smartFilters.make!.toLowerCase())
+      )
+    }
+    
+    // Tag filters
+    if (smartFilters.tags.length > 0) {
+      result = result.filter(p => 
+        smartFilters.tags.some(tag => p.tags.includes(tag))
+      )
+    }
+    
+    // Status filter
+    if (smartFilters.status !== 'all') {
+      result = result.filter(p => p.status === smartFilters.status)
+    }
+    
+    // Sorting
+    switch (smartFilters.sort) {
+      case 'popular':
+        result.sort((a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0))
+        break
+      case 'hp-high':
+        result.sort((a, b) => (b.vehicle.hp ?? 0) - (a.vehicle.hp ?? 0))
+        break
+      case 'hp-low':
+        result.sort((a, b) => (a.vehicle.hp ?? 0) - (b.vehicle.hp ?? 0))
+        break
+      // budget sorting would need budget data
+    }
+    
+    return result
+  }, [posts, filterTag, search, sortBy, likeCounts, feedFilter])
 
-  const heroImages = useMemo(() => filteredPosts.map((post) => post.heroImage), [filteredPosts])
+  const heroImages = useMemo(() => smartFilteredPosts.map((post) => post.heroImage), [smartFilteredPosts])
   const resolvedImageMap = useResolvedImageMap(heroImages)
+  
+  // Smart Filter Actions
+  function applySmartFilters() {
+    // Filters are applied automatically via useMemo
+    // This function can be used to trigger analytics, URL updates, etc.
+    console.log('Applying smart filters:', smartFilters)
+  }
+  
+  function resetSmartFilters() {
+    setSmartFilters({
+      search: '',
+      make: '',
+      model: '',
+      minHp: null,
+      maxHp: null,
+      minBudget: null,
+      maxBudget: null,
+      tags: [],
+      status: 'all',
+      sort: 'newest',
+    })
+  }
 
   function handleLike(postId: string) {
     const wasLiked = likes[postId]
@@ -1133,9 +1222,25 @@ export default function CommunityGallery() {
       {/* Build of the Week Banner */}
       {!loading && !search && !filterTag && feedFilter === 'all' && <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} />}
 
-      {/* Responsive Feed Grid */}
-      <div className="px-4 pb-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 3-Column Layout: Sidebar | Feed | Sidebar */}
+      <div className="px-4 pb-8 max-w-[1600px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Sidebar - Smart Search */}
+          <div className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-24 space-y-4">
+              <SmartSearchSidebar
+                filters={smartFilters}
+                onChange={setSmartFilters}
+                onApply={() => applySmartFilters()}
+                onReset={resetSmartFilters}
+                resultCount={smartFilteredPosts.length}
+              />
+            </div>
+          </div>
+          
+          {/* Main Feed */}
+          <div className="lg:col-span-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {loading ? (
           // Grid skeletons
           Array.from({ length: 6 }).map((_, i) => (
@@ -1164,14 +1269,14 @@ export default function CommunityGallery() {
               </div>
             </div>
           ))
-        ) : filteredPosts.length === 0 && posts.length === 0 ? (
+        ) : smartFilteredPosts.length === 0 && posts.length === 0 ? (
           <EmptyState />
-        ) : filteredPosts.length === 0 ? (
+        ) : smartFilteredPosts.length === 0 ? (
           <div className="p-10 text-center">
             <p className="text-sm text-zinc-500">No posts match your search.</p>
           </div>
         ) : (
-          filteredPosts.map((post) => (
+          smartFilteredPosts.map((post) => (
             <PostCard
               key={post.id}
               post={post}
@@ -1194,6 +1299,16 @@ export default function CommunityGallery() {
             />
           ))
         )}
+            </div>
+          </div>
+          
+          {/* Right Sidebar - Leaderboards & Battles */}
+          <div className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-24 space-y-4">
+              <BuildBattle />
+              <LeaderboardsPanel />
+            </div>
+          </div>
         </div>
       </div>
     </div>
