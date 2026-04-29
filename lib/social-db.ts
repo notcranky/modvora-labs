@@ -1,7 +1,16 @@
 // Social features - migrated from localStorage to Supabase
 // All data persists across devices and sessions
 
-import { supabase } from './supabase'
+import { supabase, supabaseEnabled } from './supabase'
+
+// Helper to check if Supabase is available
+function checkSupabase(): boolean {
+  if (!supabaseEnabled) {
+    console.warn('Supabase not configured - using localStorage fallback')
+    return false
+  }
+  return true
+}
 
 // ===== LIKES =====
 

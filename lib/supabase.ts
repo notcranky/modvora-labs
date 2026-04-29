@@ -1,12 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 
-// These will be set in .env.local
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co'
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(url, key)
+export const supabaseEnabled = !!(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
 
-// Database types
+// Database types for social features
 export interface Like {
   id: string
   user_id: string
