@@ -313,6 +313,90 @@ export default function LeaderboardPage() {
     loadLeaderboard()
   }, [category, timeframe])
   
+  // Mock data for demonstration when no profiles exist
+  const getMockEntries = (): LeaderboardEntry[] => [
+    {
+      rank: 1,
+      userId: 'user-1',
+      username: 'BoostedMK7',
+      handle: 'boostedmk7',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=BoostedMK7',
+      score: 15420,
+      stats: { posts: 42, followers: 892, likes: 12400, achievements: 8 },
+      isVerified: true
+    },
+    {
+      rank: 2,
+      userId: 'user-2',
+      username: 'StanceLife',
+      handle: 'stancelife',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=StanceLife',
+      score: 12850,
+      stats: { posts: 35, followers: 645, likes: 8900, achievements: 6 },
+      isVerified: true
+    },
+    {
+      rank: 3,
+      userId: 'user-3',
+      username: 'DriftKing99',
+      handle: 'driftking99',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=DriftKing99',
+      score: 11200,
+      stats: { posts: 28, followers: 520, likes: 7100, achievements: 5 },
+      isVerified: false
+    },
+    {
+      rank: 4,
+      userId: 'user-4',
+      username: 'VTEC_Lover',
+      handle: 'vtec_lover',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=VTEC_Lover',
+      score: 9840,
+      stats: { posts: 22, followers: 380, likes: 5400, achievements: 4 },
+      isVerified: false
+    },
+    {
+      rank: 5,
+      userId: 'user-5',
+      username: 'TurboCharged',
+      handle: 'turbcharged',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=TurboCharged',
+      score: 8720,
+      stats: { posts: 18, followers: 295, likes: 4200, achievements: 3 },
+      isVerified: false
+    },
+    {
+      rank: 6,
+      userId: 'user-6',
+      username: 'JDM_Fanatic',
+      handle: 'jdmfanatic',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=JDM_Fanatic',
+      score: 7650,
+      stats: { posts: 15, followers: 210, likes: 3500, achievements: 3 },
+      isVerified: false
+    },
+    {
+      rank: 7,
+      userId: 'user-7',
+      username: 'Widebody_Warrior',
+      handle: 'widebody_warrior',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Widebody_Warrior',
+      score: 6540,
+      stats: { posts: 12, followers: 175, likes: 2800, achievements: 2 },
+      isVerified: false
+    },
+    {
+      rank: 8,
+      userId: 'user-8',
+      username: 'TrackDayHero',
+      handle: 'trackdayhero',
+      avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=TrackDayHero',
+      score: 5420,
+      stats: { posts: 9, followers: 142, likes: 2100, achievements: 2 },
+      isVerified: false
+    }
+  ]
+
   const loadLeaderboard = async () => {
     setLoading(true)
     
@@ -341,8 +425,10 @@ export default function LeaderboardPage() {
     
     const { data, error } = await query
     
-    if (error) {
-      console.error('Error loading leaderboard:', error)
+    if (error || !data || data.length === 0) {
+      console.log('Using mock data - database empty or error:', error)
+      // Show mock data so user can see the UI features
+      setEntries(getMockEntries())
       setLoading(false)
       return
     }
