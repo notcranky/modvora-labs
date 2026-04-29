@@ -110,19 +110,12 @@ export async function getProfileWithVerification(userId: string): Promise<Profil
 export async function isVerified(userId: string): Promise<boolean> {
   if (!supabaseEnabled) return false
   
-  const { data, error } = await supabase
-    .rpc('is_verified_active', { user_id: userId })
-  
-  if (error) {
-    // Fallback: check manually
-    const profile = await getProfileWithVerification(userId)
-    if (!profile?.verified) return false
-    if (profile.verified_type === 'paid' && profile.verified_expires_at) {
-      return new Date(profile.verified_expires_at) > new Date()
-    }
-    return true
+  const profile = await getProfileWithVerification(userId)
+  if (!profile?.verified) return false
+  if (profile.verified_type === 'paid' && profile.verified_expires_at) {
+    return new Date(profile.verified_expires_at) > new Date()
   }
-  return data ?? false
+  return true
 }
 
 export async function getVerifiedUsers(): Promise<ProfileWithVerification[]> {
@@ -131,33 +124,24 @@ export async function getVerifiedUsers(): Promise<ProfileWithVerification[]> {
     return []
   }
   
-  console.log('[verification] Fetching verified users from verified_users view')
+  console.log('[verification] Fetching verified users from profiles table')
   
   const { data, error } = await supabase
-    .from('verified_users')
+    .from('profiles')
     .select('*')
-    .eq('verification_active', true)
+    .eq('verified', true)
     .order('follower_count', { ascending: false })
   
   if (error) {
     console.error('[verification] Error fetching verified users:', error)
-    // Fallback: query profiles directly
-    console.log('[verification] Trying fallback query on profiles table')
-    const { data: fallbackData, error: fallbackError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('verified', true)
-    
-    if (fallbackError) {
-      console.error('[verification] Fallback also failed:', fallbackError)
-      return []
-    }
-    
-    console.log('[verification] Fallback succeeded, found:', fallbackData?.length || 0, fallbackData)
-    return (fallbackData as ProfileWithVerification[]) ?? []
+    return []
   }
   
-  console.log('[verification] Found verified users:', data?.length || 0, data)
+  console.log('[verification] Found verified users:', data?.length || 0)
+  if (data && data.length > 0) {
+    console.log('[verification] Users:', data.map(p => ({ id: p.id?.slice(0,8), handle: p.handle, username: p.username, verified: p.verified, type: p.verified_type })))
+  }
+  
   return (data as ProfileWithVerification[]) ?? []
 }
 
@@ -171,40 +155,26 @@ export async function getVerifiedStatusByHandle(handle: string): Promise<Profile
   
   console.log('[verification] Checking handle:', handle, 'normalized:', normalizedHandle)
   
-  // Try direct query on profiles table
-  const { data, error } = await supabase
+  // Get all verified profiles
+  const { data: allVerified, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('verified', true)
-    .or(`handle.ilike.${handle},username.ilike.${handle}`)
-    .maybeSingle()
   
   if (error) {
-    console.error('[verification] Error checking handle:', error)
-    // Try broader search
-    const { data: allData, error: allError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('verified', true)
-    
-    if (allError) {
-      console.error('[verification] Error fetching all verified:', allError)
-      return null
-    }
-    
-    // Manual match
-    const match = allData?.find(p => {
-      const pHandle = p.handle?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
-      const pUsername = p.username?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
-      return pHandle === normalizedHandle || pUsername === normalizedHandle
-    })
-    
-    console.log('[verification] Manual match found:', match ? 'yes' : 'no')
-    return match as ProfileWithVerification | null
+    console.error('[verification] Error fetching verified:', error)
+    return null
   }
   
-  console.log('[verification] Direct query result:', data)
-  return data as ProfileWithVerification | null
+  // Manual match
+  const match = allVerified?.find(p => {
+    const pHandle = p.handle?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
+    const pUsername = p.username?.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
+    return pHandle === normalizedHandle || pUsername === normalizedHandle
+  })
+  
+  console.log('[verification] Manual match found:', match ? match.handle : 'no')
+  return match as ProfileWithVerification | null
 }
 
 // ===== VERIFICATION TIERS =====
