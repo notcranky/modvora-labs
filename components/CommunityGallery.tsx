@@ -168,11 +168,8 @@ function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: {
   const post = posts.find(p => p.id === current.buildId)
   if (!post) return null
   
-  // Safety checks for potentially undefined properties
-  const heroImage = post.heroImage || ''
-  const resolvedImage = heroImage ? (resolvedImageMap[heroImage] || heroImage) : ''
-  const vehicleName = post.vehicle?.name || post.vehicleLabel || 'Unknown'
-  const initials = vehicleName.slice(0, 2).toUpperCase()
+  const resolvedImage = resolvedImageMap[post.heroImage] || post.heroImage
+  const initials = post.vehicle.name?.slice(0, 2).toUpperCase() || '??'
   const authorHandle = getPostAuthorHandle(post)
   const authorUsername = getPostAuthorUsername(post)
   
@@ -221,20 +218,20 @@ function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: {
                   <svg viewBox="0 0 24 24" className="h-4 w-4 fill-red-500" strokeWidth={0}>
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                   </svg>
-                  {likeCounts[post.id] ?? current?.stats?.likes ?? 0}
+                  {likeCounts[post.id] ?? current.stats.likes}
                 </span>
                 <span className="flex items-center gap-1">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}>
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  {current?.stats?.comments ?? 0}
+                  {current.stats.comments}
                 </span>
                 <span className="flex items-center gap-1">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth={2}>
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                  {(current?.stats?.views ?? 0).toLocaleString()}
+                  {current.stats.views.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -901,9 +898,9 @@ export default function CommunityGallery() {
   const [ownedPostIds, setOwnedPostIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'newest' | 'liked'>('newest')
+  const [feedFilter, setFeedFilter] = useState<'all' | 'following'>('all')
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'feed' | 'rankings' | 'following'>('feed')
   
   // Smart Filter State
   const [smartFilters, setSmartFilters] = useState<FilterState>({
@@ -962,8 +959,8 @@ export default function CommunityGallery() {
   const filteredPosts = useMemo(() => {
     let result = [...posts]
     
-    // Following tab filter
-    if (activeTab === 'following') {
+    // Following filter
+    if (feedFilter === 'following') {
       const followed = getFollowedUsernames()
       result = result.filter((p) => followed.has(getPostAuthorUsername(p)))
     }
@@ -980,7 +977,7 @@ export default function CommunityGallery() {
     }
     if (sortBy === 'liked') result.sort((a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0))
     return result
-  }, [posts, filterTag, search, sortBy, likeCounts, activeTab])
+  }, [posts, filterTag, search, sortBy, likeCounts, feedFilter])
   
   // Smart Filter Posts
   const smartFilteredPosts = useMemo(() => {
@@ -1168,42 +1165,6 @@ export default function CommunityGallery() {
         </div>
       </div>
 
-      {/* Main Navigation Tabs */}
-      <div className="px-4 py-2 max-w-7xl mx-auto border-b border-[#1e1e24]/50">
-        <div className="flex items-center gap-1">
-          {(['feed', 'rankings', 'following'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors relative ${
-                activeTab === tab 
-                  ? 'text-white' 
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                {tab === 'feed' && '📰'}
-                {tab === 'rankings' && '🏆'}
-                {tab === 'following' && '👥'}
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </span>
-              {activeTab === tab && (
-                <motion.div
-                  layoutId="tab-indicator"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"
-                  initial={false}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {activeTab === 'rankings' ? (
-        <RankingsView posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} />
-      ) : (
-      <>
       {/* Search & Filters */}
       <div className="px-4 py-4 max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -1221,6 +1182,18 @@ export default function CommunityGallery() {
           </div>
           
           <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setFeedFilter('all')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${feedFilter === 'all' ? 'bg-white text-black' : 'bg-[#18181f] text-zinc-400 hover:text-white border border-[#2a2a35]'}`}
+            >
+              All Builds
+            </button>
+            <button
+              onClick={() => setFeedFilter('following')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${feedFilter === 'following' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#18181f] text-zinc-400 hover:text-white border border-[#2a2a35]'}`}
+            >
+              Following
+            </button>
             <button
               onClick={() => setSortBy('newest')}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${sortBy === 'newest' ? 'bg-white text-black' : 'bg-[#18181f] text-zinc-400 hover:text-white border border-[#2a2a35]'}`}
@@ -1246,12 +1219,15 @@ export default function CommunityGallery() {
         </div>
       </div>
 
-      {/* 2-Column Layout: Sidebar | Feed */}
-      <div className="px-4 pb-8 max-w-[1400px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Build of the Week Banner */}
+      {!loading && !search && !filterTag && feedFilter === 'all' && <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} />}
+
+      {/* 3-Column Layout: Sidebar | Feed | Sidebar */}
+      <div className="px-4 pb-8 max-w-[1600px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Sidebar - Smart Search */}
-          <div className="hidden lg:block lg:col-span-1">
-            <div className="sticky top-24">
+          <div className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-24 space-y-4">
               <SmartSearchSidebar
                 filters={smartFilters}
                 onChange={setSmartFilters}
@@ -1263,8 +1239,8 @@ export default function CommunityGallery() {
           </div>
           
           {/* Main Feed */}
-          <div className="lg:col-span-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {loading ? (
           // Grid skeletons
           Array.from({ length: 6 }).map((_, i) => (
@@ -1325,172 +1301,12 @@ export default function CommunityGallery() {
         )}
             </div>
           </div>
-        </div>
-      </div>
-      </>
-      )}
-    </div>
-  )
-}
-
-// ── Rankings View (Separate Tab) ────────────────────────────────────────────
-
-function RankingsView({ posts, resolvedImageMap, likeCounts }: { 
-  posts: CommunityPostWithVehicle[]; 
-  resolvedImageMap: Record<string, string>;
-  likeCounts: Record<string, number>;
-}) {
-  // Must call hooks before any conditional returns
-  const [activeRankingTab, setActiveRankingTab] = useState<'botw' | 'battles' | 'leaderboards'>('botw')
-  
-  // Guard against empty data during loading
-  if (!posts || posts.length === 0) {
-    return (
-      <div className="px-4 pb-8 max-w-[1600px] mx-auto">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-zinc-500">Loading rankings...</div>
-        </div>
-      </div>
-    )
-  }
-  
-  return (
-    <div className="px-4 pb-8 max-w-[1600px] mx-auto">
-      {/* Rankings Sub-tabs */}
-      <div className="flex items-center gap-2 mb-6 border-b border-[#1e1e24]/50">
-        {[
-          { id: 'botw', label: 'Build of the Week', icon: '👑' },
-          { id: 'battles', label: 'Build Battles', icon: '⚔️' },
-          { id: 'leaderboards', label: 'Leaderboards', icon: '🏆' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveRankingTab(tab.id as typeof activeRankingTab)}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative ${
-              activeRankingTab === tab.id ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span>{tab.icon}</span>
-              {tab.label}
-            </span>
-            {activeRankingTab === tab.id && (
-              <motion.div
-                layoutId="ranking-tab-indicator"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-500 to-yellow-500"
-                initial={false}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
-      
-      {/* Tab Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-8">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeRankingTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {activeRankingTab === 'botw' && (
-                <div className="space-y-6">
-                  <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
-                    <p className="text-zinc-500 text-center">Build of the Week - loading...</p>
-                  </div>
-                  <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
-                    <h3 className="text-lg font-semibold text-white mb-2">🏆 Hall of Fame</h3>
-                    <p className="text-sm text-zinc-500">Previous Builds of the Week and their stories</p>
-                    <div className="mt-4 p-8 text-center text-zinc-600 text-sm border border-dashed border-[#2a2a35] rounded-xl">
-                      Past winners coming soon...
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {activeRankingTab === 'battles' && (
-                <div className="space-y-6">
-                  <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Battle History</h3>
-                    <div className="space-y-3">
-                      {[
-                        { theme: 'Best Budget Turbo Build (Under $10k)', winner: 'Boosted BRZ', votes: '3,156' },
-                        { theme: 'Most Aggressive Stance', winner: 'GTI Air & Static', votes: '4,521' },
-                        { theme: 'Best Track Day Setup', winner: 'M2 Voltage', votes: '2,847' },
-                        { theme: 'Cleanest Engine Bay', winner: 'GR86 Midnight', votes: '1,923' },
-                      ].map((battle, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 bg-[#18181f] rounded-xl">
-                          <div>
-                            <p className="text-sm font-medium text-white">{battle.theme}</p>
-                            <p className="text-xs text-zinc-500">🏆 {battle.winner}</p>
-                          </div>
-                          <span className="text-xs text-zinc-500">{battle.votes} votes</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {activeRankingTab === 'leaderboards' && (
-                <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-6">
-                  <p className="text-zinc-500 text-center">Leaderboards coming soon...</p>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        
-        {/* Right Sidebar - Quick Stats */}
-        <div className="hidden lg:block lg:col-span-4">
-          <div className="sticky top-24 space-y-4">
-            <div className="bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-2xl border border-purple-500/20 p-5">
-              <h4 className="font-semibold text-white mb-3">📊 This Week</h4>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-zinc-400">New builds</span>
-                  <span className="text-white font-medium">23</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-zinc-400">Total votes</span>
-                  <span className="text-white font-medium">12.4k</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-zinc-400">Active builders</span>
-                  <span className="text-white font-medium">156</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-zinc-400">HP added</span>
-                  <span className="text-orange-400 font-medium">+4,230 WHP</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-[#111116] rounded-2xl border border-[#1e1e24] p-5">
-              <h4 className="font-semibold text-white mb-3">🚀 Rising Fast</h4>
-              <div className="space-y-2">
-                {[
-                  { name: 'Mia Johnson', handle: 'mia_j', xp: '+340 XP', badge: '🔧' },
-                  { name: 'Ryan Park', handle: 'ryan_park', xp: '+290 XP', badge: '⚡' },
-                  { name: 'Chris Lee', handle: 'chris_lee', xp: '+245 XP', badge: '🆕' },
-                ].map((user, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#18181f] transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center text-xs font-bold text-white">
-                      {user.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                      <p className="text-xs text-zinc-500">@{user.handle}</p>
-                    </div>
-                    <span className="text-xs text-green-400">{user.xp}</span>
-                  </div>
-                ))}
-              </div>
+          
+          {/* Right Sidebar - Leaderboards & Battles */}
+          <div className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-24 space-y-4">
+              <BuildBattle />
+              <LeaderboardsPanel />
             </div>
           </div>
         </div>
