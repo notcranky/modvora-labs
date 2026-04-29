@@ -3,6 +3,9 @@
 export const COOKIE_NAME = 'modvora_session'
 const SECRET = process.env.AUTH_SECRET ?? 'modvora-dev-secret-change-in-production'
 
+// Session lifetime: 30 days
+const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000
+
 export interface SessionUser {
   email: string
   name: string
@@ -37,7 +40,7 @@ function fromBase64url(str: string): ArrayBuffer {
 
 export async function createSession(user: SessionUser): Promise<string> {
   const enc = new TextEncoder()
-  const payload = { ...user, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 }
+  const payload = { ...user, exp: Date.now() + SESSION_DURATION_MS }
   const data = toBase64url(enc.encode(JSON.stringify(payload)).buffer as ArrayBuffer)
   const key = await getKey()
   const sig = toBase64url(await crypto.subtle.sign('HMAC', key, enc.encode(data)))
