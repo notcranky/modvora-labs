@@ -4,6 +4,7 @@ import Link from 'next/link'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, CommunityPostWithVehicle, loadCommunityPosts } from '@/lib/community'
 import { getPostAuthorUsername, getPostAuthorHandle, isFollowing, getFollowedUsernames } from '@/lib/profiles'
+import { getBuildOfWeek, BuildOfWeek, formatWeekDisplay } from '@/lib/build-of-week'
 import NotificationBell from '@/components/NotificationBell'
 import HPBadge, { getStoredHP } from '@/components/HPBadge'
 import { notifyComment, notifyLike, notifyCommentLike, notifyCommentReply } from '@/lib/notifications'
@@ -740,6 +741,92 @@ function EmptyState() {
   )
 }
 
+// ── BuildOfWeekBanner ─────────────────────────────────────────────────────────
+
+interface BuildOfWeekBannerProps {
+  posts: CommunityPostWithVehicle[]
+  resolvedImageMap: Record<string, string>
+  likeCounts: Record<string, number>
+}
+
+function BuildOfWeekBanner({ posts, resolvedImageMap, likeCounts }: BuildOfWeekBannerProps) {
+  const [current, setCurrent] = useState<BuildOfWeek | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setCurrent(getBuildOfWeek())
+    setLoading(false)
+  }, [])
+
+  if (loading) return <div className="animate-pulse h-48 bg-[#1e1e24] rounded-2xl" />
+  if (!current) return null
+
+  const post = posts.find(p => p.id === current.buildId)
+  if (!post) return null
+
+  const resolvedImage = resolvedImageMap[post.heroImage] || post.heroImage
+  const initials = post.vehicle.name?.slice(0, 2).toUpperCase() || '??'
+
+  return (
+    <div className="bg-gradient-to-br from-purple-900/20 via-amber-900/10 to-[#111116] rounded-2xl border border-purple-500/30 p-6 mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-2xl">👑</span>
+        <h2 className="text-lg font-semibold text-white">Build of the Week</h2>
+        <span className="ml-auto text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">
+          {formatWeekDisplay(current.weekId)}
+        </span>
+      </div>
+      
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Image */}
+        <Link href={`/community/${current.slug}`} className="w-full md:w-48 h-48 rounded-xl bg-[#1e1e24] overflow-hidden flex-shrink-0 group">
+          {resolvedImage ? (
+            <img 
+              src={resolvedImage} 
+              alt={current.title}
+              className="w-full h-full object-cover transition-transform group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600">
+              <svg viewBox="0 0 24 24" className="h-10 w-10 fill-none stroke-current" strokeWidth={1.5}>
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            </div>
+          )}
+        </Link>
+        
+        {/* Content */}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-purple-900 text-xs font-semibold text-white">
+              {initials}
+            </div>
+            <span className="text-sm text-zinc-400">by {getPostAuthorHandle(post)}</span>
+          </div>
+          
+          <h3 className="text-xl font-bold text-white mb-2">{current.title}</h3>
+          <p className="text-amber-400/80 text-sm italic mb-4">"{current.reason}"</p>
+          
+          <div className="flex items-center gap-6 text-sm">
+            <span className="text-red-400">❤️ {current.stats.likes.toLocaleString()} likes</span>
+            <span className="text-blue-400">💬 {current.stats.comments} comments</span>
+            <span className="text-green-400">👁️ {current.stats.views.toLocaleString()} views</span>
+          </div>
+          
+          <Link 
+            href={`/community/${current.slug}`}
+            className="inline-block mt-4 px-4 py-2 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-500 transition-colors"
+          >
+            View Build
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── FollowingFeed ─────────────────────────────────────────────────────────────
 
 interface FollowingFeedProps {
@@ -1141,10 +1228,14 @@ export default function CommunityGallery() {
 
         {/* Rankings Tab */}
         {activeTab === 'rankings' && (
-          <div className="text-center py-16">
-            <div className="text-4xl mb-4">🏆</div>
-            <h3 className="text-xl font-semibold text-white mb-2">Rankings Coming Soon</h3>
-            <p className="text-zinc-500">Build of the Week, Build Battles, and Leaderboards</p>
+          <div>
+            <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} />
+            
+            <div className="text-center py-12 border border-dashed border-[#2a2a35] rounded-2xl">
+              <div className="text-4xl mb-4">🏆</div>
+              <h3 className="text-xl font-semibold text-white mb-2">More Rankings Coming Soon</h3>
+              <p className="text-zinc-500">Build Battles and Leaderboards</p>
+            </div>
           </div>
         )}
 
