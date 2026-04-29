@@ -7,20 +7,36 @@ import { useEffect, useRef, useState } from 'react'
 import type { SessionUser } from '@/lib/session'
 import { signOut } from '@/hooks/useAuth'
 
-const navLinks = [
+// Marketing links shown to logged-out users
+const marketingLinks = [
   { href: '/', label: 'Home' },
-  { href: '/community', label: 'Community' },
-  { href: '/community/explore', label: 'Explore' },
   { href: '/services', label: 'Services' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/faq', label: 'FAQ' },
 ]
 
+// Core links for logged-in users
+const coreLinks = [
+  { href: '/dashboard', label: 'My Build' },
+  { href: '/community', label: 'Community' },
+  { href: '/dashboard/mod-laws', label: 'Mod Laws' },
+]
+
+// Extra links shown in "More" menu for logged-in users
+const moreLinks = [
+  { href: '/services', label: 'Services' },
+  { href: '/how-it-works', label: 'How It Works' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/', label: 'Home' },
+]
+
 export default function Navbar({ initialUser = null }: { initialUser?: SessionUser | null }) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement | null>(null)
+  const moreRef = useRef<HTMLDivElement | null>(null)
   const user = initialUser
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
@@ -35,16 +51,19 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
       if (!profileRef.current?.contains(event.target as Node)) {
         setProfileOpen(false)
       }
+      if (!moreRef.current?.contains(event.target as Node)) {
+        setMoreOpen(false)
+      }
     }
 
-    if (profileOpen) {
+    if (profileOpen || moreOpen) {
       document.addEventListener('mousedown', handlePointerDown)
     }
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown)
     }
-  }, [profileOpen])
+  }, [profileOpen, moreOpen])
 
   useEffect(() => {
     if (!isOpen) {
@@ -85,36 +104,72 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
         </Link>
 
         <div className="hidden md:flex items-center gap-7">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={isActive(link.href) ? 'page' : undefined}
-              className={`relative text-sm transition-colors duration-150 pb-0.5 ${isActive(link.href) ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
-            >
-              {link.label}
-              {isActive(link.href) && (
-                <span className="absolute -bottom-[19px] left-0 right-0 h-px bg-purple-500" />
+          {user ? (
+            // Logged-in navigation
+            <>
+              {coreLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                  className={`relative text-sm transition-colors duration-150 pb-0.5 ${isActive(link.href) ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
+                >
+                  {link.label}
+                  {isActive(link.href) && (
+                    <span className="absolute -bottom-[19px] left-0 right-0 h-px bg-purple-500" />
+                  )}
+                </Link>
+              ))}
+              {/* More dropdown for logged-in users */}
+              <div className="relative" ref={moreRef}>
+                <button
+                  onClick={() => setMoreOpen(!moreOpen)}
+                  className="text-sm text-zinc-500 hover:text-white transition-colors"
+                >
+                  More ▾
+                </button>
+                {moreOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-40 rounded-xl border border-[#2a2a35] bg-[#18181f] py-2 shadow-xl">
+                    {moreLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="block px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#23232a] transition-colors"
+                        onClick={() => setMoreOpen(false)}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {isStaff && (
+                <Link
+                  href="/admin"
+                  aria-current={isActive('/admin') ? 'page' : undefined}
+                  className={`text-sm transition-colors font-medium ${isActive('/admin') ? 'text-purple-300' : 'text-purple-400 hover:text-purple-300'}`}
+                >
+                  {isOwner ? 'Owner ⚡' : 'Admin ⚡'}
+                </Link>
               )}
-            </Link>
-          ))}
-          {isStaff && (
-            <Link
-              href="/admin"
-              aria-current={isActive('/admin') ? 'page' : undefined}
-              className={`text-sm transition-colors font-medium ${isActive('/admin') ? 'text-purple-300' : 'text-purple-400 hover:text-purple-300'}`}
-            >
-              {isOwner ? 'Owner ⚡' : 'Admin ⚡'}
-            </Link>
-          )}
-          {(isStaff || isCustomer) && (
-            <Link
-              href="/dashboard"
-              aria-current={isActive('/dashboard') ? 'page' : undefined}
-              className={`text-sm transition-colors duration-150 ${isActive('/dashboard') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
-            >
-              My Build
-            </Link>
+            </>
+          ) : (
+            // Logged-out navigation (marketing)
+            <>
+              {marketingLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                  className={`relative text-sm transition-colors duration-150 pb-0.5 ${isActive(link.href) ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
+                >
+                  {link.label}
+                  {isActive(link.href) && (
+                    <span className="absolute -bottom-[19px] left-0 right-0 h-px bg-purple-500" />
+                  )}
+                </Link>
+              ))}
+            </>
           )}
         </div>
 
@@ -238,26 +293,57 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
 
       {isOpen && (
         <div id="mobile-nav" className="md:hidden border-t border-white/[0.04] bg-[#121212] px-6 py-4 flex max-h-[calc(100vh-4rem)] flex-col gap-4 overflow-y-auto">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={isActive(link.href) ? 'page' : undefined}
-              className={`text-sm transition-colors ${isActive(link.href) ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
-              onClick={() => setIsOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {user && (
-            <Link
-              href="/community/me"
-              aria-current={isActive('/community/me') ? 'page' : undefined}
-              className={`text-sm transition-colors ${isActive('/community/me') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
-              onClick={() => setIsOpen(false)}
-            >
-              My Profile
-            </Link>
+          {user ? (
+            // Logged-in mobile menu
+            <>
+              {coreLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                  className={`text-sm transition-colors ${isActive(link.href) ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="border-t border-[#2a2a30] pt-2 mt-2">
+                <p className="text-xs text-zinc-600 uppercase tracking-wider mb-2">More</p>
+                {moreLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm text-zinc-500 hover:text-white transition-colors py-1"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+              <Link
+                href="/community/me"
+                aria-current={isActive('/community/me') ? 'page' : undefined}
+                className={`text-sm transition-colors ${isActive('/community/me') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+                onClick={() => setIsOpen(false)}
+              >
+                My Profile
+              </Link>
+            </>
+          ) : (
+            // Logged-out mobile menu
+            <>
+              {marketingLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                  className={`text-sm transition-colors ${isActive(link.href) ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </>
           )}
           {isStaff && (
             <Link href="/admin" className="text-sm text-purple-400 font-medium" onClick={() => setIsOpen(false)}>
