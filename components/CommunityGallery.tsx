@@ -925,28 +925,35 @@ export default function CommunityGallery() {
                 <p className="text-sm text-zinc-500">No posts match your search.</p>
               </div>
             ) : (
-              filteredPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
-                  liked={!!likes[post.id]}
-                  saved={!!saves[post.id]}
-                  likeCount={likeCounts[post.id] ?? 0}
-                  comments={comments[post.id] ?? []}
-                  tagCounts={tagCounts}
-                  defaultAuthor={commenterName}
-                  isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
-                  commentLikedIds={commentLikedIds}
-                  commentLikeCounts={commentLikeCounts}
-                  onLike={() => handleLike(post.id)}
-                  onSave={() => handleSave(post.id)}
-                  onAddComment={(text, author) => handleAddComment(post.id, text, author)}
-                  onAuthorChange={handleNameChange}
-                  onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
-                  onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
-                />
-              ))
+              filteredPosts.map((post) => {
+                const authorHandle = getPostAuthorUsername(post)
+                const profile = verifiedProfiles.get(authorHandle)
+                return (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
+                    liked={!!likes[post.id]}
+                    saved={!!saves[post.id]}
+                    likeCount={likeCounts[post.id] ?? 0}
+                    comments={comments[post.id] ?? []}
+                    tagCounts={tagCounts}
+                    defaultAuthor={commenterName}
+                    isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
+                    isVerified={verifiedUsers.has(authorHandle)}
+                    verifiedType={profile?.verified_type}
+                    earlySupporter={profile?.early_supporter}
+                    commentLikedIds={commentLikedIds}
+                    commentLikeCounts={commentLikeCounts}
+                    onLike={() => handleLike(post.id)}
+                    onSave={() => handleSave(post.id)}
+                    onAddComment={(text, author) => handleAddComment(post.id, text, author)}
+                    onAuthorChange={handleNameChange}
+                    onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
+                    onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
+                  />
+                )
+              })
             )}
           </div>
         )}
