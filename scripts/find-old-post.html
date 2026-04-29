@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Find Old Post</title>
+  <style>
+    body { font-family: system-ui; background: #0a0a0b; color: white; padding: 20px; }
+    .post { border: 1px solid #333; padding: 15px; margin: 10px 0; border-radius: 8px; }
+    .old { border-color: #f59e0b; background: #1a1500; }
+    img { max-width: 200px; max-height: 150px; border-radius: 4px; margin-top: 10px; }
+    pre { background: #111; padding: 10px; overflow: auto; font-size: 12px; }
+    button { background: #a855f7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Community Posts in Your Browser</h1>
+  <p>This shows all posts stored in your browser. The overwritten one might still be here.</p>
+  <button onclick="findPosts()">Find My Posts</button>
+  <div id="results"></div>
+
+  <script>
+    function findPosts() {
+      const posts = JSON.parse(localStorage.getItem('modvora_community_posts') || '[]');
+      const results = document.getElementById('results');
+      
+      if (posts.length === 0) {
+        results.innerHTML = '<p>No posts found in browser storage.</p>';
+        return;
+      }
+      
+      // Sort by update time (newest first)
+      posts.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      
+      let html = `<p>Found ${posts.length} post(s):</p>`;
+      
+      posts.forEach((post, i) => {
+        const isLatest = i === 0;
+        const updated = new Date(post.updatedAt).toLocaleString();
+        const created = new Date(post.createdAt).toLocaleString();
+        
+        html += `
+          <div class="post ${!isLatest ? 'old' : ''}">
+            <h3>${post.title || 'Untitled'} ${!isLatest ? '(OLDER VERSION)' : '(LATEST)'}</h3>
+            <p><strong>Updated:</strong> ${updated}</p>
+            <p><strong>Created:</strong> ${created}</p>
+            <p><strong>ID:</strong> ${post.id}</p>
+            ${post.heroImage ? `<img src="${post.heroImage}" alt="Hero">` : ''}
+            <details>
+              <summary>Full Data (for recovery)</summary>
+              <pre>${JSON.stringify(post, null, 2)}</pre>
+            </details>
+          </div>
+        `;
+      });
+      
+      results.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

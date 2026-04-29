@@ -698,7 +698,7 @@ export default function CommunityGallery() {
         
         setLikes(likesObj)
         setSaves(savesObj)
-        setLikeCounts(dbLikeCounts)
+        // Merge with existing stats (which were already loaded above)
         setComments(dbComments)
         setCommentLikedIds(userCommentLikes)
         setCommentLikeCounts(dbCommentLikeCounts)
@@ -780,6 +780,31 @@ export default function CommunityGallery() {
     }
   }, [posts.length])
 
+  // Periodic sync - refresh counts every 30 seconds to ensure accuracy
+  useEffect(() => {
+    if (posts.length === 0) return
+    
+    const syncInterval = setInterval(async () => {
+      // Refresh like counts for all posts
+      const postIds = posts.map(p => p.id)
+      const freshStats = await getAllPostStats(postIds)
+      
+      setLikeCounts(prev => {
+        const updated = { ...prev }
+        let hasChanges = false
+        for (const [postId, stats] of Object.entries(freshStats)) {
+          if (updated[postId] !== stats.likes) {
+            updated[postId] = stats.likes
+            hasChanges = true
+          }
+        }
+        return hasChanges ? updated : prev
+      })
+    }, 30000) // 30 seconds
+    
+    return () => clearInterval(syncInterval)
+  }, [posts])
+
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const post of posts) for (const tag of post.tags) counts[tag] = (counts[tag] ?? 0) + 1
@@ -829,8 +854,17 @@ export default function CommunityGallery() {
     setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + (wasLiked ? -1 : 1) }))
     
     if (supabaseUserId) {
-      // Use Supabase
-      await toggleDbLike(supabaseUserId, postId)
+      // Use Supabase - the realtime subscription will update the count for everyone
+      const result = await toggleDbLike(supabaseUserId, postId)
+      // If there was an error (null), revert the optimistic update
+      if (result === null) {
+        console.error('[handleLike] Failed to toggle like - reverting UI')
+        setLikes((prev) => ({ ...prev, [postId]: wasLiked }))
+        setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + (wasLiked ? 1 : -1) }))
+        // Re-fetch actual count to ensure sync
+        const { count } = await supabase.from('likes').select('id', { count: 'exact' }).eq('post_id', postId)
+        setLikeCounts((prev) => ({ ...prev, [postId]: count || 0 }))
+      }
     } else {
       // Fallback to localStorage
       safeWrite(LIKES_KEY, { ...likes, [postId]: !wasLiked })

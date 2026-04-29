@@ -28,7 +28,7 @@ export async function getUserLikes(userId: string): Promise<Set<string>> {
   return new Set(data?.map(l => l.post_id) || [])
 }
 
-export async function toggleLike(userId: string, postId: string): Promise<boolean> {
+export async function toggleLike(userId: string, postId: string): Promise<boolean | null> {
   // Check if already liked
   const { data: existing } = await supabase
     .from('likes')
@@ -46,9 +46,9 @@ export async function toggleLike(userId: string, postId: string): Promise<boolea
     
     if (error) {
       console.error('Error removing like:', error)
-      return false
+      return null // Error - caller should revert UI
     }
-    return false // Now unliked
+    return false // Successfully unliked
   } else {
     // Like
     const { error } = await supabase
@@ -57,9 +57,9 @@ export async function toggleLike(userId: string, postId: string): Promise<boolea
     
     if (error) {
       console.error('Error adding like:', error)
-      return false
+      return null // Error - caller should revert UI
     }
-    return true // Now liked
+    return true // Successfully liked
   }
 }
 
