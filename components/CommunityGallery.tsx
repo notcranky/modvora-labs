@@ -618,20 +618,33 @@ export default function CommunityGallery() {
   // Check auth on mount
   useEffect(() => {
     const checkAuth = async () => {
-      // Check for old auth cookie
-      const hasAuth = document.cookie.includes('modvora_session')
-      setIsLoggedIn(hasAuth)
-      
-      // Check Supabase auth
+      // Check Supabase auth FIRST
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('[Auth Check] Session:', session?.user?.id || 'none')
+      
       if (session?.user) {
         setSupabaseUserId(session.user.id)
         setIsLoggedIn(true)
+        console.log('[Auth Check] Logged in as:', session.user.id)
+      } else {
+        setSupabaseUserId(null)
+        setIsLoggedIn(false)
+        console.log('[Auth Check] Not logged in')
+      }
+      
+      // Also check for old auth cookie as backup
+      const hasAuth = document.cookie.includes('modvora_session')
+      if (hasAuth && !session?.user) {
+        setIsLoggedIn(true)
+        console.log('[Auth Check] Cookie says logged in but no Supabase session')
       }
       
       // Listen for auth changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSupabaseUserId(session?.user?.id || null)
+        const userId = session?.user?.id || null
+        setSupabaseUserId(userId)
+        setIsLoggedIn(!!userId)
+        console.log('[Auth Change] User:', userId || 'logged out')
         setIsLoggedIn(!!session?.user)
       })
       
@@ -861,8 +874,10 @@ export default function CommunityGallery() {
     safeWrite(LIKES_KEY, { ...likes, [postId]: !wasLiked })
     safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: (likeCounts[postId] ?? 0) + (wasLiked ? -1 : 1) })
     
-    if (!supabaseUserId) {
-      console.log('Like saved to localStorage only (not logged in)')
+    console.log('[handleLike] isLoggedIn:', isLoggedIn, 'supabaseUserId:', supabaseUserId)
+    
+    if (!isLoggedIn || !supabaseUserId) {
+      console.log('[handleLike] Saved to localStorage only (not fully logged in)')
       return
     }
     
