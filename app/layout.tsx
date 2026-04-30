@@ -4,6 +4,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { cookies } from 'next/headers'
 import { COOKIE_NAME, verifySession } from '@/lib/session'
+import { Analytics } from '@vercel/analytics/next'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,6 +41,7 @@ export default async function RootLayout({
         <Navbar initialUser={user} />
         <main className="pb-28 md:pb-0">{children}</main>
         <Footer />
+        <Analytics />
       </body>
     </html>
   )
