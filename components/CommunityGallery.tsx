@@ -848,19 +848,20 @@ export default function CommunityGallery() {
   const resolvedImageMap = useResolvedImageMap(heroImages)
 
   async function handleLike(postId: string) {
-    if (!supabaseUserId) {
-      // Not logged in, use localStorage only
-      const wasLiked = likes[postId]
-      safeWrite(LIKES_KEY, { ...likes, [postId]: !wasLiked })
-      safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: (likeCounts[postId] ?? 0) + (wasLiked ? -1 : 1) })
-      return
-    }
-    
     const wasLiked = likes[postId]
     
-    // Optimistic UI update
+    // IMMEDIATE UI UPDATE - don't wait for DB
     setLikes((prev) => ({ ...prev, [postId]: !wasLiked }))
     setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + (wasLiked ? -1 : 1) }))
+    
+    // Also update localStorage immediately for persistence
+    safeWrite(LIKES_KEY, { ...likes, [postId]: !wasLiked })
+    safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: (likeCounts[postId] ?? 0) + (wasLiked ? -1 : 1) })
+    
+    if (!supabaseUserId) {
+      console.log('Like saved to localStorage only (not logged in)')
+      return
+    }
     
     try {
       if (wasLiked) {
