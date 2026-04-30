@@ -343,7 +343,10 @@ function PostCard(props: PostCardProps) {
         </div>
         <div className="flex items-center justify-between px-3 py-2 border-b border-[#1e1e24]/50">
           <div className="flex items-center gap-1">
-            <button onClick={onLike} className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 transition-colors ${liked ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}><HeartIcon filled={liked} /></button>
+            <button onClick={onLike} className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 transition-colors ${liked ? 'text-red-500' : 'text-zinc-400 hover:text-white'}`}>
+              <HeartIcon filled={liked} />
+              <span className="text-sm font-semibold">{likeCount}</span>
+            </button>
             <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 rounded-full px-2.5 py-2 text-zinc-400 transition-colors hover:text-white"><CommentIcon /></button>
             <button onClick={handleShare} className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 transition-colors ${copied ? 'text-green-400' : 'text-zinc-400 hover:text-white'}`}>{copied ? <span className="text-xs">Copied!</span> : <ShareIcon />}</button>
           </div>

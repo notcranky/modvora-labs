@@ -171,17 +171,15 @@ export default function EnhancedLikeButton({
           ))}
         </button>
         
-        {/* Like count */}
-        {likeCount > 0 && (
-          <motion.span 
-            key={likeCount}
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className={`${s.count} font-semibold ${isLiked ? 'text-red-500' : 'text-white'}`}
-          >
-            {likeCount.toLocaleString()}
-          </motion.span>
-        )}
+        {/* Like count - always show */}
+        <motion.span 
+          key={likeCount}
+          initial={{ y: -10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className={`${s.count} font-semibold ${isLiked ? 'text-red-500' : 'text-white'}`}
+        >
+          {likeCount.toLocaleString()}
+        </motion.span>
       </div>
       
       {/* Likers avatars */}
