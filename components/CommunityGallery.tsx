@@ -69,11 +69,30 @@ function getDeviceId(): string {
   try {
     const existing = localStorage.getItem(DEVICE_ID_KEY)
     if (existing) return existing
-    const id = 'guest_' + crypto.randomUUID()
+    // Store as plain UUID — no prefix so it passes Supabase uuid column validation
+    const id = crypto.randomUUID()
     localStorage.setItem(DEVICE_ID_KEY, id)
     return id
   } catch {
-    return 'guest_fallback'
+    return crypto.randomUUID()
+  }
+}
+
+// Convert any string (email, device id) into a valid UUID v5-style string.
+// This lets us use emails as user IDs without the DB rejecting them.
+async function toUserId(input: string): Promise<string> {
+  // If it's already a UUID format, use it as-is
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
+    return input
+  }
+  try {
+    const encoded = new TextEncoder().encode(input)
+    const hashBuf = await crypto.subtle.digest('SHA-256', encoded)
+    const hex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('')
+    // Format as UUID v4 shape
+    return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-${((parseInt(hex.slice(16,18), 16) & 0x3f) | 0x80).toString(16)}${hex.slice(18,20)}-${hex.slice(20,32)}`
+  } catch {
+    return crypto.randomUUID()
   }
 }
 
@@ -904,7 +923,8 @@ export default function CommunityGallery() {
     
     // Use Supabase user ID if logged in, otherwise use anonymous device ID
     // No account required — every visitor gets a stable device ID
-    const userId = supabaseUserId || getDeviceId()
+    // Convert to valid UUID format so Supabase uuid column doesn't reject it
+    const userId = await toUserId(supabaseUserId || getDeviceId())
 
     try {
       if (wasLiked) {
