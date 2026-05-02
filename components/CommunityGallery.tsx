@@ -583,7 +583,28 @@ export default function CommunityGallery() {
   const [sortBy, setSortBy] = useState<'newest' | 'liked'>('newest')
   const [filterTag, setFilterTag] = useState('')
   const [loading, setLoading] = useState(true)
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
 
+  // ── Auth check with retry ─────────────────────────────────────────────────
+  useEffect(() => {
+    async function checkAuth(attemptsLeft = 3) {
+      try {
+        const res = await fetch('/api/auth/sync-supabase')
+        const { supabaseUserId: uid } = await res.json()
+        if (uid) {
+          console.log('[Auth Check] Got Supabase user ID from sync:', uid)
+          setSupabaseUserId(uid)
+        } else if (attemptsLeft > 1) {
+          setTimeout(() => checkAuth(attemptsLeft - 1), 500)
+        }
+      } catch {
+        if (attemptsLeft > 1) setTimeout(() => checkAuth(attemptsLeft - 1), 500)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  // ── Load posts + localStorage on mount ───────────────────────────────────
   useEffect(() => {
     fetchPublishedBuilds().then((fetched) => {
       setPosts(fetched)
@@ -599,6 +620,31 @@ export default function CommunityGallery() {
       setLoading(false)
     })
   }, [])
+
+  // ── Sync DB likes when auth resolves ─────────────────────────────────────
+  // Re-runs when supabaseUserId changes so DB likes overlay localStorage after login
+  useEffect(() => {
+    if (!supabaseUserId) return
+    async function syncDbLikes() {
+      try {
+        const res = await fetch(`/api/community/likes?userId=${encodeURIComponent(supabaseUserId!)}`)
+        if (!res.ok) return
+        const { likesObj, savesObj } = await res.json() as {
+          likesObj: Record<string, boolean>
+          savesObj: Record<string, boolean>
+        }
+        // DB wins but doesn't wipe unsynced localStorage entries
+        setLikes(prev => ({ ...prev, ...likesObj }))
+        setSaves(prev => ({ ...prev, ...savesObj }))
+        // Update persisted storage to reflect merged state
+        setLikes(merged => { safeWrite(LIKES_KEY, merged); return merged })
+        setSaves(merged => { safeWrite(SAVES_KEY, merged); return merged })
+      } catch {
+        // Graceful fallback — localStorage data is still intact
+      }
+    }
+    syncDbLikes()
+  }, [supabaseUserId])
 
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {}
