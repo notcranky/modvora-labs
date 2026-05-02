@@ -1,21 +1,109 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
-import { SharedBuild, loadSharedBuild, calcBuildDuration } from '@/lib/shared-build'
+import Link from 'next/link'
+import { SharedBuild, SharedBuildPart, loadSharedBuild, saveSharedBuild, calcBuildDuration } from '@/lib/shared-build'
+import { useAuth } from '@/hooks/useAuth'
+import { loadVehicles, SavedVehicle } from '@/lib/garage'
 
 export default function PublicBuildPage() {
   const params = useParams()
   const id = params?.id as string
+  const { user } = useAuth()
   const [build, setBuild] = useState<SharedBuild | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [lightbox, setLightbox] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Edit state
+  const [editContact, setEditContact] = useState('')
+  const [editHeroPhoto, setEditHeroPhoto] = useState<string | null>(null)
+  const [editParts, setEditParts] = useState<SharedBuildPart[]>([])
+  const [editTotalCost, setEditTotalCost] = useState(0)
+  const [editStartDate, setEditStartDate] = useState('')
 
   useEffect(() => {
     const b = loadSharedBuild(id)
     setBuild(b)
+    
+    // Check if current user owns this build
+    if (b) {
+      const vehicles = loadVehicles()
+      const ownerVehicle = vehicles.find(v => v.id === b.vehicleId)
+      setIsOwner(!!ownerVehicle)
+      
+      // Initialize edit state
+      setEditContact(b.contactLink || '')
+      setEditHeroPhoto(b.heroPhoto || null)
+      setEditParts([...b.parts])
+      setEditTotalCost(b.totalCost)
+      setEditStartDate(b.startDate?.split('T')[0] || '')
+    }
+    
     setLoaded(true)
   }, [id])
+
+  const handleSave = async () => {
+    if (!build) return
+    setSaving(true)
+    
+    const updated: SharedBuild = {
+      ...build,
+      contactLink: editContact.trim() || undefined,
+      heroPhoto: editHeroPhoto || undefined,
+      parts: editParts,
+      totalCost: editTotalCost,
+      startDate: editStartDate ? new Date(editStartDate).toISOString() : build.startDate,
+      updatedAt: new Date().toISOString(),
+    }
+    
+    saveSharedBuild(updated)
+    setBuild(updated)
+    setIsEditing(false)
+    setSaving(false)
+  }
+
+  const togglePartVisibility = (partId: string) => {
+    setEditParts(prev => prev.map(p => 
+      p.id === partId ? { ...p, hidden: !p.hidden } : p
+    ))
+  }
+
+  const updatePartCost = (partId: string, cost: number) => {
+    setEditParts(prev => prev.map(p => 
+      p.id === partId ? { ...p, cost } : p
+    ))
+    // Recalculate total
+    const newTotal = editParts.reduce((sum, p) => sum + (p.id === partId ? cost : (p.cost || 0)), 0)
+    setEditTotalCost(newTotal)
+  }
+
+  const handleHeroPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Compress image
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const maxW = 1200
+      const scale = Math.min(1, maxW / img.width)
+      canvas.width = img.width * scale
+      canvas.height = img.height * scale
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      setEditHeroPhoto(canvas.toDataURL('image/jpeg', 0.8))
+    }
+    img.src = URL.createObjectURL(file)
+  }
+
+  const visibleParts = useMemo(() => {
+    if (!build) return []
+    return isEditing ? editParts : build.parts.filter(p => !(p as any).hidden)
+  }, [build, editParts, isEditing])
 
   if (!loaded) {
     return (
@@ -31,33 +119,90 @@ export default function PublicBuildPage() {
         <p className="text-5xl">🔧</p>
         <h1 className="text-2xl font-bold text-white">Build not found</h1>
         <p className="text-zinc-500">This build link may have expired or hasn&apos;t been shared yet.</p>
-        <a href="/" className="mt-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500">
+        <Link href="/" className="mt-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500">
           Create Your Own Build
-        </a>
+        </Link>
       </div>
     )
   }
 
-  const doneParts = build.parts.filter((p) => p.status === 'installed')
+  const doneParts = visibleParts.filter((p) => p.status === 'installed')
   const milestones = build.journalEntries
     .filter((e) => e.isMilestone)
     .sort((a, b) => a.date.localeCompare(b.date))
   const journalSorted = [...build.journalEntries].sort((a, b) => b.date.localeCompare(a.date))
-  const duration = calcBuildDuration(build.startDate)
+  const duration = calcBuildDuration(isEditing ? (editStartDate || build.startDate) : build.startDate)
   const vehicleName = `${build.year} ${build.make} ${build.model}${build.trim ? ' ' + build.trim : ''}`
+  const displayTotal = isEditing ? editTotalCost : build.totalCost
 
   return (
     <div className="min-h-screen bg-[#07070a] text-white">
+      {/* ── Owner Edit Bar ───────────────────────────── */}
+      {isOwner && (
+        <div className="sticky top-0 z-50 bg-purple-600/90 backdrop-blur-sm border-b border-purple-500/30">
+          <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+            <p className="text-sm font-medium text-white">👋 This is your build page</p>
+            <div className="flex items-center gap-3">
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="text-sm font-semibold text-white bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="text-sm text-white/70 hover:text-white px-3 py-2"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="text-sm font-semibold text-white bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+                >
+                  ✏️ Edit Page
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Hero ─────────────────────────────────────── */}
       <div className="relative h-[55vw] max-h-[480px] min-h-[260px] w-full overflow-hidden bg-[#111116]">
-        {build.heroPhoto ? (
-          <img src={build.heroPhoto} alt={vehicleName} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-7xl opacity-10">🚗</span>
+        {isEditing ? (
+          <div className="relative h-full w-full">
+            {editHeroPhoto ? (
+              <img src={editHeroPhoto} alt={vehicleName} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[#1a1a24]">
+                <span className="text-7xl opacity-20">🚗</span>
+              </div>
+            )}
+            <label className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer hover:bg-black/40 transition-colors">
+              <div className="text-center">
+                <p className="text-lg font-semibold text-white mb-2">{editHeroPhoto ? 'Change Photo' : 'Add Hero Photo'}</p>
+                <p className="text-sm text-zinc-400">Click to upload</p>
+              </div>
+              <input type="file" accept="image/*" className="sr-only" onChange={handleHeroPhotoChange} />
+            </label>
           </div>
+        ) : (
+          <>
+            {build.heroPhoto ? (
+              <img src={build.heroPhoto} alt={vehicleName} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <span className="text-7xl opacity-10">🚗</span>
+              </div>
+            )}
+          </>
         )}
+        
         {/* gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#07070a] via-[#07070a]/20 to-transparent" />
 
@@ -77,44 +222,100 @@ export default function PublicBuildPage() {
       {/* ── Stats ────────────────────────────────────── */}
       <div className="mx-auto max-w-2xl px-4 pt-6">
         <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: 'Total Cost', value: build.totalCost > 0 ? `$${build.totalCost.toLocaleString()}` : '—' },
-            { label: 'Build Time', value: duration },
-            { label: 'Parts Done', value: `${doneParts.length}/${build.parts.length}` },
-            { label: 'Milestones', value: milestones.length || '—' },
-          ].map((s) => (
-            <div key={s.label} className="rounded-2xl border border-[#1e1e24] bg-[#111116] p-3 text-center">
-              <p className="text-lg font-black text-white sm:text-xl">{s.value}</p>
-              <p className="mt-0.5 text-[9px] uppercase tracking-wider text-zinc-500">{s.label}</p>
-            </div>
-          ))}
+          <div className="rounded-2xl border border-[#1e1e24] bg-[#111116] p-3 text-center">
+            {isEditing ? (
+              <input
+                type="number"
+                value={editTotalCost}
+                onChange={(e) => setEditTotalCost(Number(e.target.value))}
+                className="w-full bg-transparent text-lg font-black text-white text-center outline-none"
+              />
+            ) : (
+              <p className="text-lg font-black text-white sm:text-xl">
+                {displayTotal > 0 ? `$${displayTotal.toLocaleString()}` : '—'}
+              </p>
+            )}
+            <p className="mt-0.5 text-[9px] uppercase tracking-wider text-zinc-500">Total Cost</p>
+          </div>
+          
+          <div className="rounded-2xl border border-[#1e1e24] bg-[#111116] p-3 text-center">
+            {isEditing ? (
+              <input
+                type="date"
+                value={editStartDate}
+                onChange={(e) => setEditStartDate(e.target.value)}
+                className="w-full bg-transparent text-xs font-black text-white text-center outline-none"
+              />
+            ) : (
+              <p className="text-lg font-black text-white sm:text-xl">{duration}</p>
+            )}
+            <p className="mt-0.5 text-[9px] uppercase tracking-wider text-zinc-500">Build Time</p>
+          </div>
+          
+          <div className="rounded-2xl border border-[#1e1e24] bg-[#111116] p-3 text-center">
+            <p className="text-lg font-black text-white sm:text-xl">{doneParts.length}/{visibleParts.length}</p>
+            <p className="mt-0.5 text-[9px] uppercase tracking-wider text-zinc-500">Parts Done</p>
+          </div>
+          
+          <div className="rounded-2xl border border-[#1e1e24] bg-[#111116] p-3 text-center">
+            <p className="text-lg font-black text-white sm:text-xl">{milestones.length || '—'}</p>
+            <p className="mt-0.5 text-[9px] uppercase tracking-wider text-zinc-500">Milestones</p>
+          </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
-
         {/* ── Parts list ───────────────────────────────── */}
-        {build.parts.length > 0 && (
+        {visibleParts.length > 0 && (
           <section>
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">The Build</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+                {isEditing ? `The Build (${visibleParts.length} parts)` : 'The Build'}
+              </h2>
+              {isEditing && (
+                <p className="text-xs text-zinc-500">Toggle visibility or edit costs</p>
+              )}
+            </div>
             <div className="overflow-hidden rounded-2xl border border-[#1e1e24]">
-              {build.parts.map((part, idx) => (
+              {visibleParts.map((part, idx) => (
                 <div
                   key={part.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${idx < build.parts.length - 1 ? 'border-b border-[#1a1a20]' : ''}`}
+                  className={`flex items-center gap-3 px-4 py-3 ${idx < visibleParts.length - 1 ? 'border-b border-[#1a1a20]' : ''}`}
                 >
-                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${part.status === 'installed' ? 'border-green-500/40 bg-green-500/15' : 'border-[#2a2a30] bg-[#0e0e12]'}`}>
-                    {part.status === 'installed' && (
-                      <svg className="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  {isEditing ? (
+                    <button
+                      onClick={() => togglePartVisibility(part.id)}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-red-500/40 bg-red-500/15 hover:bg-red-500/25 transition-colors"
+                      title="Hide from public view"
+                    >
+                      <svg className="h-3 w-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                    )}
-                  </div>
-                  <span className={`flex-1 text-sm ${part.status === 'installed' ? 'text-white' : 'text-zinc-400'}`}>{part.name}</span>
-                  {part.cost != null && (
-                    <span className="text-sm font-semibold text-zinc-300">${part.cost.toLocaleString()}</span>
+                    </button>
+                  ) : (
+                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${part.status === 'installed' ? 'border-green-500/40 bg-green-500/15' : 'border-[#2a2a30] bg-[#0e0e12]'}`}>
+                      {part.status === 'installed' && (
+                        <svg className="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
                   )}
-                  {part.status !== 'installed' && (
+                  <span className={`flex-1 text-sm ${part.status === 'installed' ? 'text-white' : 'text-zinc-400'}`}>{part.name}</span>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={part.cost || ''}
+                      onChange={(e) => updatePartCost(part.id, Number(e.target.value))}
+                      placeholder="Cost"
+                      className="w-20 text-sm text-right bg-transparent text-zinc-300 border border-[#2a2a30] rounded px-2 py-1 outline-none focus:border-purple-500"
+                    />
+                  ) : (
+                    part.cost != null && (
+                      <span className="text-sm font-semibold text-zinc-300">${part.cost.toLocaleString()}</span>
+                    )
+                  )}
+                  {part.status !== 'installed' && !isEditing && (
                     <span className="rounded-full border border-[#2a2a30] px-2 py-0.5 text-[10px] font-medium capitalize text-zinc-500">
                       {part.status}
                     </span>
@@ -122,6 +323,24 @@ export default function PublicBuildPage() {
                 </div>
               ))}
             </div>
+            
+            {/* Hidden parts toggle in edit mode */}
+            {isEditing && editParts.filter((p: any) => p.hidden).length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-zinc-500 mb-2">Hidden parts (click to show):</p>
+                <div className="flex flex-wrap gap-2">
+                  {editParts.filter((p: any) => p.hidden).map(part => (
+                    <button
+                      key={part.id}
+                      onClick={() => togglePartVisibility(part.id)}
+                      className="px-3 py-1.5 rounded-full border border-zinc-600 bg-zinc-800/50 text-xs text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+                    >
+                      + {part.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -202,29 +421,54 @@ export default function PublicBuildPage() {
         )}
 
         {/* ── Contact ──────────────────────────────────── */}
-        {build.contactLink && (
-          <section className="rounded-2xl border border-[#1e1e24] bg-[#111116] p-6 text-center">
-            <p className="text-sm font-semibold text-zinc-200">Want to know more about this build?</p>
-            <p className="mt-1 text-xs text-zinc-500">Reach out to the builder directly.</p>
-            <a
-              href={build.contactLink.startsWith('http') ? build.contactLink : `https://instagram.com/${build.contactLink.replace('@', '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white hover:bg-purple-500"
-            >
-              Contact the Builder
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-            </a>
-          </section>
-        )}
+        <section className="rounded-2xl border border-[#1e1e24] bg-[#111116] p-6 text-center">
+          {isEditing ? (
+            <>
+              <p className="text-sm font-semibold text-zinc-200 mb-3">Contact Link (Instagram, etc.)</p>
+              <input
+                type="text"
+                value={editContact}
+                onChange={(e) => setEditContact(e.target.value)}
+                placeholder="@username or https://..."
+                className="w-full max-w-sm mx-auto block text-sm text-center bg-transparent text-white border border-[#2a2a35] rounded-xl px-4 py-3 outline-none focus:border-purple-500"
+              />
+            </>
+          ) : build.contactLink ? (
+            <>
+              <p className="text-sm font-semibold text-zinc-200">Want to know more about this build?</p>
+              <p className="mt-1 text-xs text-zinc-500">Reach out to the builder directly.</p>
+              <a
+                href={build.contactLink.startsWith('http') ? build.contactLink : `https://instagram.com/${build.contactLink.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white hover:bg-purple-500"
+              >
+                Contact the Builder
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+              </a>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-zinc-500">No contact link added yet.</p>
+              {isOwner && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="mt-3 text-sm text-purple-400 hover:text-purple-300"
+                >
+                  Add one →
+                </button>
+              )}
+            </>
+          )}
+        </section>
 
         {/* ── Footer ───────────────────────────────────── */}
         <div className="border-t border-[#1a1a20] pt-6 text-center">
-          <a href="/" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
+          <Link href="/" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
             Powered by <span className="font-semibold text-zinc-500">Modvora Labs</span> · Track your own build →
-          </a>
+          </Link>
         </div>
       </div>
 

@@ -28,6 +28,10 @@ export interface StateLaws {
     status: 'legal' | 'restricted' | 'illegal'
     note: string
   }
+  decorativeLights: {
+    status: 'legal' | 'restricted' | 'illegal'
+    note: string
+  }
   strictness: 'lenient' | 'moderate' | 'strict'
 }
 
@@ -61,6 +65,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber only for headlights. Colored films illegal.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   AK: {
@@ -91,6 +99,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'Headlights must emit white light. Colored covers restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'lenient',
   },
@@ -124,6 +136,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White/amber headlights required. Tinted covers are restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   AR: {
@@ -154,6 +170,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'Headlights must produce white light. Colored covers not permitted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -187,6 +207,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'illegal',
       note: 'Only white headlights permitted. Colored covers or HID without approval are illegal.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   CO: {
@@ -218,6 +242,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White headlights required. Blue-tinted or HID bulbs may require approval.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -251,6 +279,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'Headlights must emit white light. Tinted covers not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   DE: {
@@ -283,6 +315,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White/amber only. Colored headlight covers are not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   FL: {
@@ -313,6 +349,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'illegal',
       note: 'Only white or amber headlights permitted. Colored covers are illegal in FL.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -346,6 +386,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. Tinted film over headlights is restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   HI: {
@@ -378,6 +422,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights only. Strict annual inspection enforces this.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   ID: {
@@ -408,6 +456,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers not permitted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -441,6 +493,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. Colored tint or covers are restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   IN: {
@@ -473,6 +529,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights only. Tinted covers not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   IA: {
@@ -503,6 +563,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights only. Tinted covers not permitted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -535,6 +599,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. Colored tint restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   KY: {
@@ -565,6 +633,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights only. Colored covers not permitted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -597,6 +669,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required by law. Colored covers restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   ME: {
@@ -627,6 +703,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber only. Safety inspection enforces this.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -660,6 +740,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. Tinted covers not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   MA: {
@@ -691,6 +775,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White headlights required. Annual safety inspection enforces this.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'strict',
   },
@@ -724,6 +812,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights only. Tinted covers not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   MN: {
@@ -755,6 +847,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. Colored tint or covers not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   MS: {
@@ -785,6 +881,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White headlights required. Colored covers technically restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -818,6 +918,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights only. Colored covers restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   MT: {
@@ -849,6 +953,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required by law. Colored covers technically restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'lenient',
   },
   NE: {
@@ -879,6 +987,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights only. Tinted covers restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -912,6 +1024,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. HID or colored covers require approval.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   NH: {
@@ -942,6 +1058,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers not permitted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -975,6 +1095,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'illegal',
       note: 'Only white headlights permitted. Annual inspection flags violations.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   NM: {
@@ -1006,6 +1130,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White headlights required. Colored tint restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -1039,6 +1167,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'illegal',
       note: 'Only white or amber headlights. Annual inspection enforces this strictly.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   NC: {
@@ -1071,6 +1203,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights required. Annual inspection enforces compliance.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   ND: {
@@ -1101,6 +1237,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers technically restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'lenient',
   },
@@ -1134,6 +1274,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights only. Colored tint restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   OK: {
@@ -1164,6 +1308,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -1197,6 +1345,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   PA: {
@@ -1229,6 +1381,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. Annual inspection enforces this.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   RI: {
@@ -1259,6 +1415,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White headlights required. Annual safety inspection enforces compliance.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -1291,6 +1451,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights only. Colored tint restricted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   SD: {
@@ -1322,6 +1486,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights technically required but leniently enforced.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'lenient',
   },
   TN: {
@@ -1352,6 +1520,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights required. Tinted covers restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -1385,6 +1557,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights required. Annual inspection enforces compliance.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   UT: {
@@ -1417,6 +1593,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights required. Annual inspection enforces this.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   VT: {
@@ -1447,6 +1627,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White headlights required. Annual safety inspection enforces this.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'lenient',
   },
@@ -1480,6 +1664,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White headlights required. Annual safety inspection enforces this.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   WA: {
@@ -1512,6 +1700,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'strict',
   },
   WV: {
@@ -1542,6 +1734,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers restricted.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'moderate',
   },
@@ -1575,6 +1771,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
       status: 'restricted',
       note: 'White or amber headlights required. Colored covers not permitted.',
     },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
+    },
     strictness: 'moderate',
   },
   WY: {
@@ -1605,6 +1805,10 @@ export const MOD_LAWS: Record<string, StateLaws> = {
     coloredHeadlights: {
       status: 'restricted',
       note: 'White headlights technically required but very leniently enforced.',
+    },
+    decorativeLights: {
+      status: 'restricted',
+      note: 'Christmas lights, string lights, or decorative lighting on exterior generally not permitted while driving. May be allowed for stationary display at events. Check local ordinances.',
     },
     strictness: 'lenient',
   },

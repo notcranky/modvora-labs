@@ -46,7 +46,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Quick links */}
-        <div className="grid md:grid-cols-3 gap-4 mb-10">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           <Link href="/dashboard" className="bg-[#16161a] hover:bg-[#1e1e24] border border-[#2a2a30] hover:border-purple-500/30 rounded-xl p-5 transition-all group">
             <div className="text-2xl mb-2">🚗</div>
             <h3 className="text-white font-bold mb-1">View Dashboard</h3>
@@ -61,6 +61,11 @@ export default async function AdminPage() {
             <div className="text-2xl mb-2">💼</div>
             <h3 className="text-white font-bold mb-1">Services</h3>
             <p className="text-zinc-500 text-sm">Manage service plans & pricing</p>
+          </Link>
+          <Link href="/dashboard/admin/botw" className="bg-[#16161a] hover:bg-[#1e1e24] border border-amber-500/30 hover:border-amber-500/60 rounded-xl p-5 transition-all group">
+            <div className="text-2xl mb-2">🏆</div>
+            <h3 className="text-amber-300 font-bold mb-1">Build of the Week</h3>
+            <p className="text-zinc-500 text-sm">Select featured community builds</p>
           </Link>
         </div>
 

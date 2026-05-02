@@ -430,11 +430,13 @@ export function upsertCommunityPost(input: PublishCommunityInput) {
   const posts = loadCommunityPosts()
   const now = new Date().toISOString()
   const baseSlug = slugify(input.title || `build-${input.vehicleId}`)
+  // Only find existing post if explicitly editing (postId or slug provided)
+  // Don't auto-match by vehicleId - that causes new posts to overwrite existing ones
   const existingPost = input.postId
     ? posts.find((post) => post.id === input.postId)
     : input.slug
       ? posts.find((post) => post.slug === input.slug)
-      : posts.find((post) => post.vehicleId === input.vehicleId)
+      : undefined
   const currentId = existingPost?.id ?? createId('community')
   let slug = existingPost?.slug ?? baseSlug
 

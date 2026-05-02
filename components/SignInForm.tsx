@@ -138,8 +138,24 @@ export default function SignInForm() {
           </form>
         </div>
 
+        {/* Sign up & forgot password */}
+        <div className="mt-6 flex items-center justify-between text-sm">
+          <Link
+            href="/signup"
+            className="text-purple-400 hover:text-purple-300 transition-colors"
+          >
+            Create account →
+          </Link>
+          <Link
+            href="/reset-password"
+            className="text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Forgot password?
+          </Link>
+        </div>
+
         {/* No account? */}
-        <div className="mt-6 text-center">
+        <div className="mt-4 text-center">
           <p className="text-zinc-500 text-sm mb-3">Don&apos;t have access yet?</p>
           <Link
             href="/services"

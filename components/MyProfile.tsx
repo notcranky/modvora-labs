@@ -4,8 +4,11 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchPublishedBuilds, loadCommunityPosts, CommunityPostWithVehicle } from '@/lib/community'
 import { loadVehicles } from '@/lib/garage'
-import { toHandle } from '@/lib/profiles'
+import { toHandle, validateHandle } from '@/lib/profiles'
+import HPBadge, { getStoredHP, storeHP } from '@/components/HPBadge'
 import { useResolvedImageMap } from '@/lib/local-images'
+import { useAuth } from '@/hooks/useAuth'
+import { getUserLikes, getLikeCounts as getDbLikeCounts } from '@/lib/social-db'
 
 const LIKES_KEY = 'modvora_likes'
 const SAVES_KEY = 'modvora_saves'
@@ -65,6 +68,8 @@ export default function MyProfile() {
   const [profilePhoto, setProfilePhoto] = useState<string>('')
   const [bio, setBio] = useState('')
   const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const { user } = useAuth()
 
   // Edit modal state
   const [editing, setEditing] = useState(false)
@@ -73,16 +78,72 @@ export default function MyProfile() {
   const [editPhoto, setEditPhoto] = useState<string>('')
   const [editBio, setEditBio] = useState('')
   const [handleError, setHandleError] = useState('')
+  const [editHP, setEditHP] = useState<string>('')
+  const [editCrankHP, setEditCrankHP] = useState<string>('')
+  const [hp, setHp] = useState<number | null>(null)
+  const [crankHp, setCrankHp] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Load profile from database if logged in, otherwise localStorage
   useEffect(() => {
-    fetchPublishedBuilds().then((posts) => {
+    fetchPublishedBuilds().then(async (posts) => {
       setAllPosts(posts)
       setOwnedVehicleIds(new Set(loadVehicles().map((v) => v.id)))
       setOwnedPostIds(new Set(loadCommunityPosts().map((p) => p.id)))
-      setLikes(safeRead(LIKES_KEY, {}))
+      // Load from Supabase if logged in, otherwise localStorage
+      if (user?.id) {
+        const userLikes = await getUserLikes(user.id)
+        const likesObj: Record<string, boolean> = {}
+        userLikes.forEach(id => likesObj[id] = true)
+        setLikes(likesObj)
+        
+        // Also load all like counts for accurate display
+        const allPostIds = posts.map(p => p.id)
+        const dbLikeCounts = await getDbLikeCounts(allPostIds)
+        // Store in localStorage for consistency with other components
+        localStorage.setItem('modvora_like_counts', JSON.stringify(dbLikeCounts))
+      } else {
+        setLikes(safeRead(LIKES_KEY, {}))
+      }
       setSaves(safeRead(SAVES_KEY, {}))
       setComments(safeRead(COMMENTS_KEY, {}))
+
+      // If logged in, try to load from database first
+      if (user) {
+        try {
+          console.log('[MyProfile] Loading profile from DB...')
+          const res = await fetch('/api/profile')
+          console.log('[MyProfile] Profile response:', res.status)
+          if (res.ok) {
+            const { profile } = await res.json()
+            console.log('[MyProfile] Loaded profile:', profile)
+            if (profile && profile.email) {
+              setCommenterName(profile.name || '')
+              setCommenterHandle(profile.handle || toHandle(profile.name || ''))
+              setProfilePhoto(profile.photo_url || '')
+              setBio(profile.bio || '')
+              setHp(profile.horsepower_wh || null)
+              setCrankHp(profile.horsepower_crank || null)
+              // Also sync to localStorage for offline
+              localStorage.setItem('modvora_commenter_name', profile.name || '')
+              localStorage.setItem('modvora_commenter_handle', profile.handle || '')
+              if (profile.photo_url) localStorage.setItem('modvora_profile_photo', profile.photo_url)
+              if (profile.bio) localStorage.setItem('modvora_profile_bio', profile.bio)
+              storeHP(profile.horsepower_wh, profile.horsepower_crank)
+              setLoaded(true)
+              return
+            }
+          } else {
+            const err = await res.text()
+            console.error('[MyProfile] Failed to load profile:', err)
+          }
+        } catch (e) {
+          console.error('[MyProfile] Error loading profile:', e)
+        }
+      }
+
+      // Fallback to localStorage
+      console.log('[MyProfile] Falling back to localStorage')
       const name = safeRead<string>('modvora_commenter_name', '')
       const handle = safeRead<string>('modvora_commenter_handle', '') || toHandle(name)
       const photo = safeRead<string>('modvora_profile_photo', '')
@@ -91,15 +152,20 @@ export default function MyProfile() {
       setCommenterHandle(handle)
       setProfilePhoto(photo)
       setBio(storedBio)
+      const storedHP = getStoredHP()
+      setHp(storedHP.whp)
+      setCrankHp(storedHP.crank)
       setLoaded(true)
     })
-  }, [])
+  }, [user])
 
   function openEdit() {
     setEditName(commenterName)
     setEditHandle(commenterHandle)
     setEditPhoto(profilePhoto)
     setEditBio(bio)
+    setEditHP(hp?.toString() || '')
+    setEditCrankHP(crankHp?.toString() || '')
     setHandleError('')
     setEditing(true)
   }
@@ -111,27 +177,100 @@ export default function MyProfile() {
     setEditPhoto(dataUrl)
   }
 
-  function saveProfile() {
-    const trimmedName = editName.trim()
-    const trimmedHandle = toHandle(editHandle.replace(/^@/, '').trim())
+  async function checkHandleUnique(handle: string): Promise<boolean> {
+    if (!handle || handle === commenterHandle) return true
 
-    if (trimmedHandle && trimmedHandle !== commenterHandle) {
-      const takenHandles = new Set(
-        allPosts
-          .filter((p) => !ownedVehicleIds.has(p.vehicleId) && !ownedPostIds.has(p.id) && !p.isLocal)
-          .map((p) => toHandle(p.vehicle.name || '')),
-      )
-      if (takenHandles.has(trimmedHandle)) {
-        setHandleError(`@${trimmedHandle} is already taken`)
+    // Check against database
+    try {
+      const res = await fetch(`/api/profile/check-handle?handle=${encodeURIComponent(handle)}`)
+      if (res.ok) {
+        const { available } = await res.json()
+        return available
+      }
+    } catch {
+      // Fallback to local check if API fails
+    }
+
+    // Fallback: check local posts
+    const takenHandles = new Set(
+      allPosts
+        .filter((p) => !ownedVehicleIds.has(p.vehicleId) && !ownedPostIds.has(p.id) && !p.isLocal)
+        .map((p) => toHandle(p.vehicle.name || '')),
+    )
+    return !takenHandles.has(handle)
+  }
+
+  async function saveProfile() {
+    const trimmedName = editName.trim()
+    const handleInput = editHandle.replace(/^@/, '').trim()
+    const trimmedHandle = handleInput ? toHandle(handleInput) : ''
+
+    // Validate handle format first
+    if (handleInput) {
+      const validation = validateHandle(handleInput)
+      if (!validation.valid) {
+        setHandleError(validation.error || 'Invalid handle')
         return
       }
     }
 
+    // Check handle uniqueness
+    if (trimmedHandle && trimmedHandle !== commenterHandle) {
+      const isUnique = await checkHandleUnique(trimmedHandle)
+      if (!isUnique) {
+        setHandleError(`@${trimmedHandle} is already taken. Choose another.`)
+        return
+      }
+    }
+
+    setSaving(true)
     const finalHandle = trimmedHandle || toHandle(trimmedName)
+    const whpNum = editHP ? parseInt(editHP, 10) : null
+    const crankNum = editCrankHP ? parseInt(editCrankHP, 10) : null
+
+    // Save to database if logged in
+    if (user) {
+      try {
+        console.log('[MyProfile] Saving profile to DB...', { name: trimmedName, handle: finalHandle })
+        const res = await fetch('/api/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: trimmedName,
+            handle: finalHandle,
+            bio: editBio.trim() || null,
+            photo_url: editPhoto || null,
+            horsepower_wh: whpNum && whpNum > 0 ? whpNum : null,
+            horsepower_crank: crankNum && crankNum > 0 ? crankNum : null,
+          }),
+        })
+        console.log('[MyProfile] Save response:', res.status)
+        if (!res.ok) {
+          const err = await res.text()
+          console.error('[MyProfile] Failed to save:', err)
+          if (err.includes('taken')) {
+            setHandleError(`@${finalHandle} is already taken`)
+            setSaving(false)
+            return
+          }
+        } else {
+          const saved = await res.json()
+          console.log('[MyProfile] Saved profile:', saved)
+        }
+      } catch (e) {
+        console.error('[MyProfile] Error saving:', e)
+      }
+    }
+
+    // Update local state
     setCommenterName(trimmedName)
     setCommenterHandle(finalHandle)
     setProfilePhoto(editPhoto)
     setBio(editBio.trim())
+    setHp(whpNum && whpNum > 0 ? whpNum : null)
+    setCrankHp(crankNum && crankNum > 0 ? crankNum : null)
+
+    // Always save to localStorage as backup
     try {
       if (trimmedName) localStorage.setItem('modvora_commenter_name', trimmedName)
       if (finalHandle) localStorage.setItem('modvora_commenter_handle', finalHandle)
@@ -139,7 +278,10 @@ export default function MyProfile() {
       else localStorage.removeItem('modvora_profile_photo')
       if (editBio.trim()) localStorage.setItem('modvora_profile_bio', editBio.trim())
       else localStorage.removeItem('modvora_profile_bio')
+      storeHP(whpNum && whpNum > 0 ? whpNum : null, crankNum && crankNum > 0 ? crankNum : null)
     } catch {}
+
+    setSaving(false)
     setEditing(false)
   }
 
@@ -188,7 +330,10 @@ export default function MyProfile() {
           </div>
 
           <div className="min-w-0 flex-1 pt-1">
-            <h1 className={`text-2xl font-bold ${commenterName ? 'text-white' : 'text-zinc-500'}`}>{displayName}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className={`text-2xl font-bold ${commenterName ? 'text-white' : 'text-zinc-500'}`}>{displayName}</h1>
+              <HPBadge hp={hp} crankHP={crankHp} size="md" />
+            </div>
             <p className="mt-0.5 text-sm text-zinc-500">@{displayHandle}</p>
             {bio && <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-400">{bio}</p>}
             {loaded && (
@@ -348,33 +493,93 @@ export default function MyProfile() {
                 <p className="mt-0.5 text-right text-[11px] text-zinc-600">{editBio.length}/160</p>
               </div>
 
+              {/* HP Badge */}
+              <div className="mb-4 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
+                <label className="mb-1.5 block text-xs font-medium text-orange-400">🔥 Horsepower Badge</label>
+                <p className="mb-3 text-[11px] text-zinc-500">Display your build's power. Shows as a badge next to your name.</p>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-zinc-500">WHP</label>
+                    <input
+                      type="number"
+                      value={editHP}
+                      onChange={(e) => setEditHP(e.target.value)}
+                      placeholder="340"
+                      min="0"
+                      max="5000"
+                      className="w-full rounded-xl border border-[#2a2a35] bg-[#18181f] px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-orange-500/50 transition-colors"
+                    />
+                    <p className="mt-0.5 text-[10px] text-zinc-600">Wheel HP (preferred)</p>
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-[10px] uppercase tracking-wider text-zinc-500">Crank HP</label>
+                    <input
+                      type="number"
+                      value={editCrankHP}
+                      onChange={(e) => setEditCrankHP(e.target.value)}
+                      placeholder="400"
+                      min="0"
+                      max="5000"
+                      className="w-full rounded-xl border border-[#2a2a35] bg-[#18181f] px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-orange-500/50 transition-colors"
+                    />
+                    <p className="mt-0.5 text-[10px] text-zinc-600">If no WHP</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Handle */}
               <div className="mb-6">
-                <label className="mb-1.5 block text-xs text-zinc-500">Handle</label>
-                <div className="flex items-center gap-1.5 rounded-xl border bg-[#18181f] px-3 py-2 transition-colors focus-within:border-purple-500/50 border-[#2a2a35]">
+                <label className="mb-1.5 block text-xs text-zinc-500">Handle <span className="text-zinc-600">(unique, no spaces)</span></label>
+                <div className={`flex items-center gap-1.5 rounded-xl border bg-[#18181f] px-3 py-2 transition-colors focus-within:border-purple-500/50 ${handleError ? 'border-red-500/50' : 'border-[#2a2a35]'}`}>
                   <span className="text-sm text-zinc-500">@</span>
                   <input
                     type="text"
                     value={editHandle.replace(/^@/, '')}
-                    onChange={(e) => { setEditHandle(e.target.value); setHandleError('') }}
-                    placeholder="yourhandle"
+                    onChange={(e) => {
+                      const val = e.target.value
+                      // Prevent spaces in real-time
+                      if (val.includes(' ')) {
+                        setHandleError('Spaces not allowed — use underscores_')
+                      } else {
+                        setHandleError('')
+                      }
+                      setEditHandle(val.replace(/\s+/g, '_'))
+                    }}
+                    placeholder="your_handle"
                     className="flex-1 bg-transparent text-sm text-white placeholder-zinc-600 outline-none"
                   />
                 </div>
-                {handleError && <p className="mt-1.5 text-xs text-red-400">{handleError}</p>}
+                {handleError ? (
+                  <p className="mt-1.5 text-xs text-red-400">{handleError}</p>
+                ) : (
+                  <p className="mt-1.5 text-xs text-zinc-600">
+                    Letters, numbers, underscores only. 3-30 chars.
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
               <div className="flex gap-2">
                 <button
                   onClick={saveProfile}
-                  className="flex-1 rounded-xl bg-purple-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+                  disabled={saving}
+                  className={`flex-1 rounded-xl py-2.5 text-sm font-medium text-white transition-colors flex items-center justify-center gap-2 ${
+                    saving ? 'bg-purple-600/50 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500'
+                  }`}
                 >
-                  Save
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    'Save'
+                  )}
                 </button>
                 <button
                   onClick={() => setEditing(false)}
-                  className="rounded-xl border border-[#2a2a35] px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:text-white"
+                  disabled={saving}
+                  className="rounded-xl border border-[#2a2a35] px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:text-white disabled:opacity-50"
                 >
                   Cancel
                 </button>
