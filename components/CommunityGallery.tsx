@@ -662,23 +662,27 @@ export default function CommunityGallery() {
       // Load localStorage data as fallback
       setLikes(safeRead(LIKES_KEY, {}))
       setSaves(safeRead(SAVES_KEY, {}))
+      // ── FIX: seed like counts from localStorage first so they persist on refresh
+      // even when Supabase RPC fails or returns empty
+      setLikeCounts(safeRead(LIKE_COUNTS_KEY, {}))
       setCommenterName(safeRead(COMMENTER_NAME_KEY, ''))
       setOwnedVehicleIds(new Set(loadVehicles().map((v) => v.id)))
       setOwnedPostIds(new Set(loadCommunityPosts().map((p) => p.id)))
-      
+
       // Load all social stats from Supabase (for everyone - counts are public)
       const postIds = fetched.map(p => p.id)
       const allStats = await getAllPostStats(postIds)
       const statsLikeCounts: Record<string, number> = {}
       const statsCommentCounts: Record<string, number> = {}
       const statsShareCounts: Record<string, number> = {}
-      
+
       for (const [postId, stats] of Object.entries(allStats)) {
         statsLikeCounts[postId] = stats.likes
         statsCommentCounts[postId] = stats.comments
         statsShareCounts[postId] = stats.shares
       }
-      
+
+      // Supabase counts overlay localStorage — localStorage is the floor, DB is truth
       setLikeCounts(prev => ({ ...prev, ...statsLikeCounts }))
       setCommentCounts(prev => ({ ...prev, ...statsCommentCounts }))
       setShareCounts(prev => ({ ...prev, ...statsShareCounts }))
@@ -756,9 +760,9 @@ export default function CommunityGallery() {
       setLoading(false)
     }
     
-    if (posts.length === 0) {
-      loadData()
-    }
+    // ── FIX: removed `if (posts.length === 0)` guard — that blocked re-runs
+    // when supabaseUserId changes (auth resolves), so DB likes never loaded
+    loadData()
   }, [supabaseUserId])
 
   // Realtime subscriptions for likes and comments
