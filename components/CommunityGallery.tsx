@@ -648,6 +648,9 @@ export default function CommunityGallery() {
   const [verifiedUsers, setVerifiedUsers] = useState<Set<string>>(new Set())
   const [verifiedProfiles, setVerifiedProfiles] = useState<Map<string, ProfileWithVerification>>(new Map())
   const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
+  // userUUID is the hashed UUID version of supabaseUserId — used for ALL Supabase queries
+  // so inserts and lookups always use the exact same value
+  const [userUUID, setUserUUID] = useState<string | null>(null)
 
   // Check auth on mount — uses your site's own session cookie, not Supabase auth
   useEffect(() => {
@@ -656,16 +659,23 @@ export default function CommunityGallery() {
         const res = await fetch('/api/auth/me')
         const { user } = await res.json()
         if (user?.email) {
-          // Use the user's email as their stable ID for likes/saves
           setSupabaseUserId(user.email)
           setIsLoggedIn(true)
+          // Hash email → UUID once here so every read/write uses the same value
+          const uuid = await toUserId(user.email)
+          setUserUUID(uuid)
         } else {
           setSupabaseUserId(null)
           setIsLoggedIn(false)
+          // Guests get a stable device UUID
+          const uuid = await toUserId(getDeviceId())
+          setUserUUID(uuid)
         }
       } catch {
         setSupabaseUserId(null)
         setIsLoggedIn(false)
+        const uuid = await toUserId(getDeviceId())
+        setUserUUID(uuid)
       }
     }
     checkAuth()
@@ -705,9 +715,22 @@ export default function CommunityGallery() {
       setCommentCounts(prev => ({ ...prev, ...statsCommentCounts }))
       setShareCounts(prev => ({ ...prev, ...statsShareCounts }))
       
-      // If Supabase user is logged in, also load their personal data (likes, saves)
+      // Load personal likes/saves using the hashed UUID (same ID used on insert)
+      const activeUUID = userUUID || await toUserId(getDeviceId())
+      const userLikes = await getUserLikes(activeUUID)
+      const userSaves = await getUserSaves(activeUUID)
+
+      const likesObj: Record<string, boolean> = {}
+      userLikes.forEach(id => { likesObj[id] = true })
+      const savesObj: Record<string, boolean> = {}
+      userSaves.forEach(id => { savesObj[id] = true })
+
+      // DB wins, but merge with localStorage so nothing is lost
+      setLikes(prev => ({ ...prev, ...likesObj }))
+      setSaves(prev => ({ ...prev, ...savesObj }))
+
+      // Load comments if logged in
       if (supabaseUserId) {
-        const userLikes = await getUserLikes(supabaseUserId)
         const dbComments: Record<string, Comment[]> = {}
         for (const post of fetched) {
           const postComments = await getDbComments(post.id)
@@ -724,20 +747,9 @@ export default function CommunityGallery() {
             })) || []
           }))
         }
-        const userSaves = await getUserSaves(supabaseUserId)
-        const userCommentLikes = await getUserCommentLikes(supabaseUserId)
+        const userCommentLikes = await getUserCommentLikes(activeUUID)
         const allCommentIds = Object.values(dbComments).flat().flatMap(c => [c.id, ...(c.replies?.map(r => r.id) || [])])
         const dbCommentLikeCounts = await getCommentLikeCounts(allCommentIds)
-        
-        // Convert sets to objects for state
-        const likesObj: Record<string, boolean> = {}
-        userLikes.forEach(id => likesObj[id] = true)
-        const savesObj: Record<string, boolean> = {}
-        userSaves.forEach(id => savesObj[id] = true)
-        
-        setLikes(likesObj)
-        setSaves(savesObj)
-        // Merge with existing stats (which were already loaded above)
         setComments(dbComments)
         setCommentLikedIds(userCommentLikes)
         setCommentLikeCounts(dbCommentLikeCounts)
@@ -922,9 +934,8 @@ export default function CommunityGallery() {
     safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: (likeCounts[postId] ?? 0) + (wasLiked ? -1 : 1) })
     
     // Use Supabase user ID if logged in, otherwise use anonymous device ID
-    // No account required — every visitor gets a stable device ID
-    // Convert to valid UUID format so Supabase uuid column doesn't reject it
-    const userId = await toUserId(supabaseUserId || getDeviceId())
+    // Use the pre-computed UUID (same one used for all DB reads)
+    const userId = userUUID || await toUserId(getDeviceId())
 
     try {
       if (wasLiked) {
