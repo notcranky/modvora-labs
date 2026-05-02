@@ -381,11 +381,28 @@ function PostCard(props: PostCardProps) {
               <HeartIcon filled={liked} />
               <span className="text-sm font-semibold">{likeCount}</span>
             </button>
-            <button onClick={() => setShowComments(true)} className="flex items-center gap-1.5 rounded-full px-2.5 py-2 text-zinc-400 transition-colors hover:text-white"><CommentIcon /></button>
+            <button onClick={() => setShowComments(true)} className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 transition-colors ${commentCount > 0 ? 'text-zinc-300 hover:text-white' : 'text-zinc-400 hover:text-white'}`}>
+              <CommentIcon />
+              {commentCount > 0 && <span className="text-sm font-semibold">{commentCount}</span>}
+            </button>
             <button onClick={handleShare} className={`flex items-center gap-1.5 rounded-full px-2.5 py-2 transition-colors ${copied ? 'text-green-400' : 'text-zinc-400 hover:text-white'}`}>{copied ? <span className="text-xs">Copied!</span> : <ShareIcon />}</button>
           </div>
           <button onClick={onSave} className={`rounded-full p-2 transition-colors ${saved ? 'text-purple-400' : 'text-zinc-400 hover:text-white'}`}><BookmarkIcon filled={saved} /></button>
         </div>
+        {post.progressPercent > 0 && (
+          <div className="px-4 pt-2.5 pb-1">
+            <div className="flex items-center justify-between text-[11px] text-zinc-600 mb-1">
+              <span>Build progress</span>
+              <span className={post.progressPercent === 100 ? 'text-green-500' : 'text-zinc-500'}>{post.progressPercent}%{post.progressPercent === 100 ? ' ✓' : ''}</span>
+            </div>
+            <div className="h-1 bg-[#1e1e24] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${post.progressPercent === 100 ? 'bg-green-500' : 'bg-purple-500'}`}
+                style={{ width: `${post.progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
         <div className="px-4 pb-4 space-y-2">
           {/* Stats row */}
           {(likeCount > 0 || commentCount > 0 || shareCount > 0) && (
@@ -1164,54 +1181,94 @@ export default function CommunityGallery() {
         </div>
       </div>}
 
+      {/* Trending tags strip */}
+      {activeTab === 'feed' && trendingTags.length > 0 && (
+        <div className="px-4 pb-3 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-none pb-1">
+            <span className="text-xs font-semibold text-zinc-600 uppercase tracking-wider whitespace-nowrap flex-shrink-0">Trending</span>
+            <div className="w-px h-4 bg-[#2a2a35] flex-shrink-0" />
+            {trendingTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setFilterTag(filterTag === tag ? '' : tag)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  filterTag === tag
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-[#18181f] text-zinc-400 hover:text-white border border-[#2a2a35] hover:border-zinc-600'
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tab Content */}
       <div className="px-4 pb-8 max-w-7xl mx-auto">
         {/* Feed Tab */}
         {activeTab === 'feed' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {loading ? (
-              <FeedSkeleton count={6} />
-            ) : filteredPosts.length === 0 && posts.length === 0 ? (
-              <EmptyState />
-            ) : filteredPosts.length === 0 ? (
-              <div className="col-span-full p-10 text-center">
-                <p className="text-sm text-zinc-500">No posts match your search.</p>
-              </div>
-            ) : (
-              filteredPosts.map((post) => {
-                const authorName = post.vehicle.name || 'unknown'
-                const authorKey = toHandle(authorName)
-                const isOwner = isOwnerHandle(authorName) || isOwnerHandle(authorKey)
-                const badgeColor = isOwner ? 'gold' : 'purple'
-                return (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
-                    liked={!!likes[post.id]}
-                    saved={!!saves[post.id]}
-                    likeCount={likeCounts[post.id] ?? 0}
-                    commentCount={commentCounts[post.id] ?? 0}
-                    shareCount={shareCounts[post.id] ?? 0}
-                    comments={comments[post.id] ?? []}
-                    tagCounts={tagCounts}
-                    defaultAuthor={commenterName}
-                    isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
-                    isVerified={true}
-                    badgeColor={badgeColor}
-                    commentLikedIds={commentLikedIds}
-                    commentLikeCounts={commentLikeCounts}
-                    onLike={() => handleLike(post.id)}
-                    onSave={() => handleSave(post.id)}
-                    onShare={() => handleShare(post.id)}
-                    onAddComment={(text, author) => handleAddComment(post.id, text, author)}
-                    onAuthorChange={handleNameChange}
-                    onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
-                    onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
-                  />
-                )
-              })
+          <div>
+            {/* Build of the Week at top of feed */}
+            {!loading && posts.length > 0 && (
+              <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} comments={comments} />
             )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {loading ? (
+                <FeedSkeleton count={6} />
+              ) : filteredPosts.length === 0 && posts.length === 0 ? (
+                <EmptyState />
+              ) : filteredPosts.length === 0 ? (
+                <div className="col-span-full p-10 text-center">
+                  <p className="text-sm text-zinc-500">No posts match your search.</p>
+                </div>
+              ) : (
+                filteredPosts.map((post) => {
+                  const authorName = post.vehicle.name || 'unknown'
+                  const authorKey = toHandle(authorName)
+                  const isOwner = isOwnerHandle(authorName) || isOwnerHandle(authorKey)
+                  const badgeColor = isOwner ? 'gold' : 'purple'
+                  return (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      resolvedImage={resolvedImageMap[post.heroImage] || post.heroImage}
+                      liked={!!likes[post.id]}
+                      saved={!!saves[post.id]}
+                      likeCount={likeCounts[post.id] ?? 0}
+                      commentCount={commentCounts[post.id] ?? 0}
+                      shareCount={shareCounts[post.id] ?? 0}
+                      comments={comments[post.id] ?? []}
+                      tagCounts={tagCounts}
+                      defaultAuthor={commenterName}
+                      isOwner={ownedVehicleIds.has(post.vehicleId) || ownedPostIds.has(post.id) || post.isLocal}
+                      isVerified={true}
+                      badgeColor={badgeColor}
+                      commentLikedIds={commentLikedIds}
+                      commentLikeCounts={commentLikeCounts}
+                      onLike={() => handleLike(post.id)}
+                      onSave={() => handleSave(post.id)}
+                      onShare={() => handleShare(post.id)}
+                      onAddComment={(text, author) => handleAddComment(post.id, text, author)}
+                      onAuthorChange={handleNameChange}
+                      onLikeComment={(commentId, commentAuthor, commentText) => handleLikeComment(post.id, commentId, commentAuthor, commentText)}
+                      onReplyToComment={(parentId, text, author, parentAuthor) => handleReplyToComment(post.id, parentId, text, author, parentAuthor)}
+                    />
+                  )
+                })
+              )}
+              {/* CTA at bottom */}
+              {!loading && filteredPosts.length > 0 && (
+                <div className="col-span-full mt-2">
+                  <div className="rounded-2xl border border-dashed border-[#2a2a35] bg-[#0e0e12] p-8 text-center">
+                    <div className="text-3xl mb-3">🔧</div>
+                    <h3 className="text-lg font-semibold text-white mb-2">Building something?</h3>
+                    <p className="text-sm text-zinc-500 mb-4 max-w-sm mx-auto">Track every mod, expense, and milestone. Free forever.</p>
+                    <Link href="/intake" className="inline-block rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 transition-colors">Start Your Build →</Link>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
