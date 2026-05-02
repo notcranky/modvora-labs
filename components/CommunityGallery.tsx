@@ -61,6 +61,21 @@ const LIKE_COUNTS_KEY = 'modvora_like_counts'
 const COMMENTS_KEY = 'modvora_comments'
 const COMMENTER_NAME_KEY = 'modvora_commenter_name'
 const COMMENT_LIKES_KEY = 'modvora_comment_likes'
+const DEVICE_ID_KEY = 'modvora_device_id'
+
+// Get or create a stable anonymous device ID for this browser
+function getDeviceId(): string {
+  if (typeof window === 'undefined') return 'server'
+  try {
+    const existing = localStorage.getItem(DEVICE_ID_KEY)
+    if (existing) return existing
+    const id = 'guest_' + crypto.randomUUID()
+    localStorage.setItem(DEVICE_ID_KEY, id)
+    return id
+  } catch {
+    return 'guest_fallback'
+  }
+}
 
 function safeRead<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
@@ -903,57 +918,44 @@ export default function CommunityGallery() {
     safeWrite(LIKES_KEY, { ...likes, [postId]: !wasLiked })
     safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: (likeCounts[postId] ?? 0) + (wasLiked ? -1 : 1) })
     
-    console.log('[handleLike] isLoggedIn:', isLoggedIn, 'supabaseUserId:', supabaseUserId)
-    
-    if (!isLoggedIn || !supabaseUserId) {
-      console.log('[handleLike] Saved to localStorage only (not fully logged in)')
-      return
-    }
-    
+    // Use Supabase user ID if logged in, otherwise use anonymous device ID
+    // No account required — every visitor gets a stable device ID
+    const userId = supabaseUserId || getDeviceId()
+
     try {
       if (wasLiked) {
         // Unlike
         const { error } = await supabase
           .from('likes')
           .delete()
-          .eq('user_id', supabaseUserId)
+          .eq('user_id', userId)
           .eq('post_id', postId)
-        
+
         if (error) throw error
       } else {
         // Like
         const { error } = await supabase
           .from('likes')
-          .insert({ user_id: supabaseUserId, post_id: postId })
-        
+          .insert({ user_id: userId, post_id: postId })
+
         if (error) {
-          // Check if it's a unique constraint violation (already liked)
           if (error.code === '23505') {
-            console.log('Already liked')
+            // Already liked (unique constraint) — treat as success
             setLikes((prev) => ({ ...prev, [postId]: true }))
           } else {
             throw error
           }
         }
       }
-      
-      // Verify the change
+
+      // Confirm actual count from DB so everyone sees the same number
       const { count } = await supabase
         .from('likes')
         .select('id', { count: 'exact' })
         .eq('post_id', postId)
-      
+
       setLikeCounts((prev) => ({ ...prev, [postId]: count || 0 }))
-      
-      // Also verify user's like status
-      const { data } = await supabase
-        .from('likes')
-        .select('id')
-        .eq('user_id', supabaseUserId)
-        .eq('post_id', postId)
-        .maybeSingle()
-      
-      setLikes((prev) => ({ ...prev, [postId]: !!data }))
+      safeWrite(LIKE_COUNTS_KEY, { ...likeCounts, [postId]: count || 0 })
       
     } catch (err: any) {
       console.error('Like failed:', err)
