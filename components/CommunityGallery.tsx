@@ -630,40 +630,24 @@ export default function CommunityGallery() {
   const [verifiedProfiles, setVerifiedProfiles] = useState<Map<string, ProfileWithVerification>>(new Map())
   const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
 
-  // Check auth on mount
+  // Check auth on mount — uses your site's own session cookie, not Supabase auth
   useEffect(() => {
-    const checkAuth = async () => {
-      // Check Supabase auth FIRST
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log('[Auth Check] Session:', session?.user?.id || 'none')
-      
-      if (session?.user) {
-        setSupabaseUserId(session.user.id)
-        setIsLoggedIn(true)
-        console.log('[Auth Check] Logged in as:', session.user.id)
-      } else {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me')
+        const { user } = await res.json()
+        if (user?.email) {
+          // Use the user's email as their stable ID for likes/saves
+          setSupabaseUserId(user.email)
+          setIsLoggedIn(true)
+        } else {
+          setSupabaseUserId(null)
+          setIsLoggedIn(false)
+        }
+      } catch {
         setSupabaseUserId(null)
         setIsLoggedIn(false)
-        console.log('[Auth Check] Not logged in')
       }
-      
-      // Also check for old auth cookie as backup
-      const hasAuth = document.cookie.includes('modvora_session')
-      if (hasAuth && !session?.user) {
-        setIsLoggedIn(true)
-        console.log('[Auth Check] Cookie says logged in but no Supabase session')
-      }
-      
-      // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        const userId = session?.user?.id || null
-        setSupabaseUserId(userId)
-        setIsLoggedIn(!!userId)
-        console.log('[Auth Change] User:', userId || 'logged out')
-        setIsLoggedIn(!!session?.user)
-      })
-      
-      return () => subscription.unsubscribe()
     }
     checkAuth()
   }, [])
