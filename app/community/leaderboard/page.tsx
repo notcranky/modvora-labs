@@ -274,14 +274,6 @@ function UserStatsCard({ userId }: { userId: string }) {
   )
 }
 
-// Community navigation (same as main community page)
-const navItems = [
-  { href: '/community', label: 'Feed', icon: '🏠' },
-  { href: '/community/trending', label: 'Trending', icon: '🔥' },
-  { href: '/community/leaderboard', label: 'Leaderboard', icon: '🏆' },
-  { href: '/community/explore', label: 'Explore', icon: '🔍' },
-]
-
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [category, setCategory] = useState('overall')
@@ -292,18 +284,17 @@ export default function LeaderboardPage() {
   const [userRank, setUserRank] = useState<number | null>(null)
   
   useEffect(() => {
-    // Get current user with better auth check
+    // Use our custom session cookie — NOT supabase.auth which doesn't know about it
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUserId(user.id)
-        // Fetch the user's profile directly to ensure we have correct data
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-        setUserProfile(profile)
+      try {
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
+        const { user } = await res.json()
+        if (user?.email) {
+          setUserId(user.email)
+          setUserProfile({ username: user.name || user.email.split('@')[0], email: user.email })
+        }
+      } catch {
+        // guest — no stats shown, no sign-in nag
       }
     }
     getUser()
@@ -486,37 +477,12 @@ export default function LeaderboardPage() {
   
   const activeCategory = categories.find(c => c.id === category)
   const ActiveIcon = activeCategory?.icon || TrophyIcon
-  
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
 
   return (
     <div className="min-h-screen bg-[#0a0a0b]">
-      {/* Single Consolidated Header */}
-      <header className="sticky top-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
+      {/* Sticky sub-header — sits below the community layout nav (top-28 = 64px navbar + 48px community nav) */}
+      <header className="sticky top-28 z-30 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
         <div className="max-w-4xl mx-auto px-4 py-3">
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-1 mb-4 overflow-x-auto scrollbar-hide">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
-                    ${isActive 
-                      ? 'bg-purple-600 text-white' 
-                      : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
-                    }
-                  `}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </Link>
-              )
-            })}
-          </div>
-          
           {/* Title & Category Tabs */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">

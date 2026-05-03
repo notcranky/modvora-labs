@@ -50,7 +50,7 @@ export default function CommunityExplore() {
   const resolvedImageMap = useResolvedImageMap(heroImages)
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] px-4 pb-16 pt-24 sm:px-6">
+    <div className="min-h-screen bg-[#0a0a0b] px-4 pb-16 pt-4 sm:px-6">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">

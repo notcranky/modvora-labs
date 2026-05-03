@@ -1092,9 +1092,9 @@ export default function CommunityGallery() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] px-4 pb-16 pt-24 sm:px-6">
-      {/* Header - Clean & Simple */}
-      <div className="sticky top-0 z-20 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-[#1e1e24]/50 px-4 py-4">
+    <div className="min-h-screen bg-[#0a0a0b] px-4 pb-16 sm:px-6">
+      {/* Header — sticks below the main Navbar (64px) + community layout nav (48px) = top-28 */}
+      <div className="sticky top-28 z-20 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-[#1e1e24]/50 px-4 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold tracking-tight text-white">Community Builds</h1>

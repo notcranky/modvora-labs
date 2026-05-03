@@ -17,14 +17,6 @@ const ClockIcon = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"
 const TrendingUpIcon = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
 const AwardIcon = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="8" r="7" strokeWidth={1.8} /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8.21 13.89L7 23l5-3 5 3-1.21-9.12" /></svg>
 
-// Community navigation
-const navItems = [
-  { href: '/community', label: 'Feed', icon: '🏠' },
-  { href: '/community/trending', label: 'Trending', icon: '🔥' },
-  { href: '/community/leaderboard', label: 'Leaderboard', icon: '🏆' },
-  { href: '/community/explore', label: 'Explore', icon: '🔍' },
-]
-
 const timeRanges = [
   { id: '24h', label: '24 Hours', icon: ClockIcon },
   { id: '7d', label: '7 Days', icon: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg> },
@@ -332,36 +324,11 @@ export default function TrendingPage() {
     }
   }
 
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
-
   return (
     <div className="min-h-screen bg-[#0a0a0b]">
-      {/* Single Consolidated Header */}
-      <header className="sticky top-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
+      {/* Sticky sub-header — sits below the community layout nav (top-28 = 64px + 48px) */}
+      <header className="sticky top-28 z-30 bg-[#0a0a0b]/95 backdrop-blur-xl border-b border-[#1e1e24]">
         <div className="max-w-2xl mx-auto px-4 py-3">
-          {/* Navigation */}
-          <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-hide">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
-                    ${isActive 
-                      ? 'bg-purple-600 text-white' 
-                      : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
-                    }
-                  `}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </Link>
-              )
-            })}
-          </div>
-          
           {/* Title & Time Filters */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
