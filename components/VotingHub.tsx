@@ -254,6 +254,74 @@ function SubmitModal({ weekId, userId, onClose, onSuccess }: SubmitModalProps) {
   )
 }
 
+// ── Fallback sample nominees (shown when DB has no nominations yet) ───────────
+
+const SAMPLE_NOMINATIONS: Nomination[] = [
+  {
+    id: 'demo-wrx',
+    week_id: '',
+    post_id: 'sample-nom-wrx',
+    post_slug: 'widebody-wrx-sti-build',
+    post_title: 'Widebody WRX STI',
+    post_hero_image: 'https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=800&q=80',
+    vehicle_label: '2018 Subaru WRX STI',
+    submitter_user_id: 'sample',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-gr86',
+    week_id: '',
+    post_id: 'sample-nom-gr86',
+    post_slug: 'gr86-track-day-spec',
+    post_title: 'GR86 Track Day Spec',
+    post_hero_image: 'https://images.unsplash.com/photo-1632245889029-e406faaa34cd?w=800&q=80',
+    vehicle_label: '2023 Toyota GR86',
+    submitter_user_id: 'sample',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-350z',
+    week_id: '',
+    post_id: 'sample-nom-350z',
+    post_slug: 'track-built-350z',
+    post_title: 'Track-Built 350Z',
+    post_hero_image: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&q=80',
+    vehicle_label: '2004 Nissan 350Z',
+    submitter_user_id: 'sample',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-mustang',
+    week_id: '',
+    post_id: 'sample-nom-mustang',
+    post_slug: 'coyote-mustang-gt',
+    post_title: 'Coyote Mustang GT',
+    post_hero_image: 'https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?w=800&q=80',
+    vehicle_label: '2021 Ford Mustang GT',
+    submitter_user_id: 'sample',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-m2',
+    week_id: '',
+    post_id: 'sample-nom-m2',
+    post_slug: 'bmw-m2-competition',
+    post_title: 'BMW M2 Competition',
+    post_hero_image: 'https://images.unsplash.com/photo-1555626906-fcf10d6851b4?w=800&q=80',
+    vehicle_label: '2020 BMW M2 Competition',
+    submitter_user_id: 'sample',
+    created_at: new Date().toISOString(),
+  },
+]
+
+const SAMPLE_VOTES: Record<string, number> = {
+  'demo-wrx': 8,
+  'demo-gr86': 6,
+  'demo-350z': 5,
+  'demo-mustang': 2,
+  'demo-m2': 1,
+}
+
 // ── VotingHub (main export) ───────────────────────────────────────────────────
 
 interface VotingHubProps {
@@ -313,8 +381,13 @@ export default function VotingHub({ userId, isLoggedIn }: VotingHubProps) {
     }
   }, [weekId, round, userId])
 
-  // Sort nominations by vote count
-  const sorted = [...nominations].sort((a, b) => (voteCounts[b.id] ?? 0) - (voteCounts[a.id] ?? 0))
+  // Use live DB data if available, otherwise fall back to sample nominees
+  const useDemo = nominations.length === 0
+  const activeCounts = useDemo ? SAMPLE_VOTES : voteCounts
+  const activeNoms   = useDemo ? SAMPLE_NOMINATIONS : nominations
+
+  // Sort by vote count
+  const sorted = [...activeNoms].sort((a, b) => (activeCounts[b.id] ?? 0) - (activeCounts[a.id] ?? 0))
 
   // Final round: top 3 only
   const displayed = phase === 'final' ? sorted.slice(0, 3) : sorted
@@ -322,11 +395,18 @@ export default function VotingHub({ userId, isLoggedIn }: VotingHubProps) {
   // Results: top nominee is winner
   const winner = phase === 'results' ? sorted[0] : null
 
-  const totalVotes = Object.values(voteCounts).reduce((s, n) => s + n, 0)
+  const totalVotes = Object.values(activeCounts).reduce((s, n) => s + n, 0)
 
   async function handleVote(nominationId: string) {
     if (!userId) return
     if (voting) return
+
+    // Demo mode — optimistic local-only vote so UI feels live
+    if (useDemo) {
+      setMyVote(prev => prev === nominationId ? null : nominationId)
+      return
+    }
+
     setVoting(true)
 
     // Optimistic update
@@ -399,22 +479,6 @@ export default function VotingHub({ userId, isLoggedIn }: VotingHubProps) {
         </div>
       )}
 
-      {/* No nominations */}
-      {displayed.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-[#2a2a35] p-10 text-center">
-          <div className="text-3xl mb-3">🏁</div>
-          <h3 className="text-base font-semibold text-white mb-1">No nominations yet</h3>
-          <p className="text-sm text-zinc-500 mb-4">Be the first to submit a build for this week.</p>
-          {userId && (
-            <button
-              onClick={() => setShowSubmit(true)}
-              className="rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 transition-colors"
-            >
-              Nominate a Build
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Nominee grid */}
       {displayed.length > 0 && (
@@ -423,7 +487,7 @@ export default function VotingHub({ userId, isLoggedIn }: VotingHubProps) {
             <NomineeCard
               key={nom.id}
               nomination={nom}
-              voteCount={voteCounts[nom.id] ?? 0}
+              voteCount={activeCounts[nom.id] ?? 0}
               totalVotes={totalVotes}
               myVote={myVote}
               phase={phase}
