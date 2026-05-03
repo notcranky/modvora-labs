@@ -35,6 +35,7 @@ import { PostCardSkeleton, FeedSkeleton } from '@/components/ui/Skeleton'
 import OfflineIndicator from '@/components/OfflineIndicator'
 import { StreakBadge, LevelBadge } from '@/components/GamificationBadge'
 import { getConnectionQuality } from '@/lib/offline'
+import VotingHub from '@/components/VotingHub'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1275,13 +1276,7 @@ export default function CommunityGallery() {
         {/* Rankings Tab */}
         {activeTab === 'rankings' && (
           <div>
-            <BuildOfWeekBanner posts={posts} resolvedImageMap={resolvedImageMap} likeCounts={likeCounts} comments={comments} />
-            
-            <div className="text-center py-12 border border-dashed border-[#2a2a35] rounded-2xl">
-              <div className="text-4xl mb-4">🏆</div>
-              <h3 className="text-xl font-semibold text-white mb-2">More Rankings Coming Soon</h3>
-              <p className="text-zinc-500">Build Battles and Leaderboards</p>
-            </div>
+            <VotingHub userId={userUUID} isLoggedIn={isLoggedIn} />
           </div>
         )}
 
