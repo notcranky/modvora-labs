@@ -34,6 +34,8 @@ export default function SignInForm() {
         return
       }
 
+      // Clear any stale auth cache so useAuth picks up the fresh session immediately.
+      try { sessionStorage.removeItem('modvora_auth_cache_v1') } catch {}
       // Hard redirect so the server layout re-renders against the fresh auth cookie.
       window.location.replace(from)
     } catch {

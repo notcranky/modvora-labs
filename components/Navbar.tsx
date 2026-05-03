@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import type { SessionUser } from '@/lib/session'
-import { signOut } from '@/hooks/useAuth'
+import { useAuth, signOut } from '@/hooks/useAuth'
 
 // Marketing links shown to logged-out users
 const marketingLinks = [
@@ -39,7 +39,9 @@ export default function Navbar({ initialUser = null }: { initialUser?: SessionUs
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement | null>(null)
   const moreRef = useRef<HTMLDivElement | null>(null)
-  const user = initialUser
+  // useAuth checks /api/auth/me client-side so the Navbar always reflects the
+  // real session — even if the server-rendered initialUser is stale.
+  const { user } = useAuth(initialUser)
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
