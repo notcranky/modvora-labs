@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const navItems = [
-  { href: '/community',             label: 'Feed',        icon: '🏠' },
-  { href: '/community/trending',    label: 'Trending',    icon: '🔥' },
-  { href: '/community/leaderboard', label: 'Leaderboard', icon: '🏆' },
-  { href: '/community/explore',     label: 'Explore',     icon: '🔍' },
+  { href: '/community'             , label: 'Feed'        },
+  { href: '/community/trending'   , label: 'Trending'    },
+  { href: '/community/leaderboard', label: 'Leaderboard' },
+  { href: '/community/explore'    , label: 'Explore'     },
 ]
 
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
@@ -32,13 +32,12 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                     isActive
                       ? 'bg-purple-600 text-white shadow-sm shadow-purple-500/30'
                       : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
                   }`}
                 >
-                  <span>{item.icon}</span>
                   {item.label}
                 </Link>
               )

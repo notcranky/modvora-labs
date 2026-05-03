@@ -1093,15 +1093,24 @@ export default function CommunityGallery() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] px-4 pb-16 sm:px-6">
-      {/* Header — sticks below the main Navbar (64px) + community layout nav (48px) = top-28 */}
-      <div className="sticky top-28 z-20 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-[#1e1e24]/50 px-4 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold tracking-tight text-white">Community Builds</h1>
-            <span className="hidden sm:inline text-xs text-zinc-600">•</span>
-            <p className="hidden sm:block text-sm text-zinc-500">Real builds from the garage</p>
-          </div>
-          <div className="flex items-center gap-4">
+      {/* Page header — not sticky, scrolls with content */}
+      <div className="pt-4 pb-2 px-4 max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-1 border-b border-[#1e1e24]/50 w-full pb-2">
+          {(['feed', 'rankings', 'following'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${activeTab === tab ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              {tab === 'feed' && 'Feed'}
+              {tab === 'rankings' && 'Rankings'}
+              {tab === 'following' && 'Following'}
+              {activeTab === tab && (
+                <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />
+              )}
+            </button>
+          ))}
+          <div className="ml-auto flex items-center gap-3">
             <NotificationBell />
             {isLoggedIn ? (
               <Link href="/dashboard/publish" className="flex items-center gap-2 rounded-full bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors">
@@ -1117,26 +1126,6 @@ export default function CommunityGallery() {
               </Link>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="px-4 py-2 max-w-7xl mx-auto border-b border-[#1e1e24]/50">
-        <div className="flex items-center gap-1">
-          {(['feed', 'rankings', 'following'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`relative px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              {tab === 'feed' && '📰 Feed'}
-              {tab === 'rankings' && '🏆 Rankings'}
-              {tab === 'following' && '👥 Following'}
-              {activeTab === tab && (
-                <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />
-              )}
-            </button>
-          ))}
         </div>
       </div>
 
